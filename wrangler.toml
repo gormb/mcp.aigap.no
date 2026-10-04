@@ -6,3 +6,12 @@ compatibility_flags = ["nodejs_compat"]
 [[routes]]
 pattern = "mcp.aigap.no"
 custom_domain = true
+
+[durable_objects]
+bindings = [
+  { name = "MCP_OBJECT", class_name = "AigapMCP" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AigapMCP"]
