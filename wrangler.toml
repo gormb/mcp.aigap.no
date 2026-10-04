@@ -1,12 +1,16 @@
-name = "aigap"
+name = "mcp"
 main = "index.ts"
 compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
+preview_urls = false
 
-[[routes]]
-pattern = "mcp.aigap.no"
-custom_domain = true
+# mcp.aigap.no is not yet attachable: the aigap.no zone lives at one.com, and
+# Workers custom domains require the zone to be hosted on Cloudflare.
+# Uncomment once aigap.no (or its DNS) is moved to this account.
+# [[routes]]
+# pattern = "mcp.aigap.no"
+# custom_domain = true
 
 [durable_objects]
 bindings = [

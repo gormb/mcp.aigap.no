@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aigap MCP</title>
+<style>
+  :root { color-scheme: light dark }
+  body { margin:0 auto; font:16px/1.6 system-ui,-apple-system,sans-serif; max-width:44rem; padding:2.5rem 1.25rem 4rem }
+  h1 { font-size:1.5rem; margin:0 0 .25rem }
+  p.sub { margin:0 0 2.5rem; opacity:.65 }
+  h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; opacity:.65; margin:2.25rem 0 .5rem }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:.88em }
+  code { background:#8881; padding:.15em .4em; border-radius:.3em }
+  pre { background:#8881; padding:.9rem 1rem; border-radius:.5rem; overflow-x:auto; margin:0 }
+  a { color:inherit }
+</style>
+<h1>Aigap MCP</h1>
+<p class="sub">A minimal Model Context Protocol server running on Cloudflare Workers.</p>
+
+<h2>Endpoint</h2>
+<pre>https://mcp.kontakt-aigap.workers.dev/mcp</pre>
+<p style="opacity:.65;margin:.6rem 0 0">Transport: <strong>Streamable HTTP</strong></p>
+
+<h2>Tools</h2>
+<p><code>hello</code> &mdash; takes <code>name</code> (string) and returns a greeting.</p>
+
+<h2>Connect from VS Code / Copilot</h2>
+<pre>{
+  "servers": {
+    "aigap": {
+      "type": "http",
+      "url": "https://mcp.kontakt-aigap.workers.dev/mcp"
+    }
+  }
+}</pre>
+
+<h2>Try it with curl</h2>
+<pre>curl https://mcp.kontakt-aigap.workers.dev/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize",
+       "params":{"protocolVersion":"2025-06-18","capabilities":{},
+                 "clientInfo":{"name":"curl","version":"1"}}}'</pre>
+</html>
