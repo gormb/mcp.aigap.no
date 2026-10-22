@@ -1,0 +1,28 @@
+# Unreal Engine generated directories
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Visual Studio
+.vs/
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.suo
+*.user
+*.userprefs
+*.sln
+*.vcxproj
+*.vcxproj.filters
+
+# IDEs
+.idea/
+.vscode/compile_commands.json
+*.code-workspace
+
+# Plugin binaries
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
