@@ -7,6 +7,39 @@
 
 namespace
 {
+	FString MakeSlug(const FString& Title, int32 Index)
+	{
+		FString Slug;
+		for (const TCHAR Char : Title)
+		{
+			if (FChar::IsAlnum(Char))
+			{
+				Slug.AppendChar(FChar::ToLower(Char));
+			}
+			else if (!Slug.IsEmpty() && !Slug.EndsWith(TEXT("-")))
+			{
+				Slug.AppendChar(TEXT('-'));
+			}
+		}
+
+		while (Slug.EndsWith(TEXT("-")))
+		{
+			Slug.LeftChopInline(1);
+		}
+
+		if (Slug.IsEmpty())
+		{
+			Slug = TEXT("section");
+		}
+
+		return FString::Printf(TEXT("%02d-%s"), Index, *Slug);
+	}
+
+	int32 ParsePageNumber(const FString& Text)
+	{
+		return FCString::Atoi(*Text.Mid(2).TrimStartAndEnd());
+	}
+
 	/** Replaces [label](url) and ![alt](url) with their visible text and reports the first target. */
 	FString StripInlineLinks(const FString& In, FString& OutFirstUrl)
 	{
@@ -193,6 +226,121 @@ namespace
 			Text.TrimStartInline();
 		}
 	}
+
+	/** Derives narration subchapters and page ranges from the parsed blocks. */
+	void BuildStructure(FMarkdownDocument& Document)
+	{
+		Document.Pages.Reset();
+		Document.SubChapters.Reset();
+
+		FPageData CurrentPage;
+		bool bPageOpen = false;
+		for (int32 Index = 0; Index < Document.Blocks.Num(); ++Index)
+		{
+			const FMarkdownBlock& Block = Document.Blocks[Index];
+			if (Block.Type != EMarkdownBlockType::PageBreak)
+			{
+				continue;
+			}
+
+			if (bPageOpen)
+			{
+				CurrentPage.LastBlock = Index - 1;
+				Document.Pages.Add(CurrentPage);
+			}
+
+			CurrentPage = FPageData();
+			CurrentPage.Number = ParsePageNumber(Block.Text);
+			CurrentPage.FirstBlock = Index;
+			bPageOpen = true;
+		}
+
+		if (bPageOpen)
+		{
+			CurrentPage.LastBlock = Document.Blocks.Num() - 1;
+			Document.Pages.Add(CurrentPage);
+		}
+
+		if (Document.Pages.Num() == 0 && Document.Blocks.Num() > 0)
+		{
+			FPageData Page;
+			Page.Number = 1;
+			Page.FirstBlock = 0;
+			Page.LastBlock = Document.Blocks.Num() - 1;
+			Document.Pages.Add(Page);
+		}
+
+		// `##` and `###` open a narration unit; deeper headings stay inside it.
+		for (int32 Index = 0; Index < Document.Blocks.Num(); ++Index)
+		{
+			const FMarkdownBlock& Block = Document.Blocks[Index];
+			if (Block.Type != EMarkdownBlockType::Heading || Block.Level < 2 || Block.Level > 3)
+			{
+				continue;
+			}
+
+			if (Document.SubChapters.Num() > 0)
+			{
+				Document.SubChapters.Last().LastBlock = Index - 1;
+			}
+
+			FBookSubChapter SubChapter;
+			SubChapter.Title = Block.Text;
+			SubChapter.HeadingLevel = Block.Level;
+			SubChapter.FirstBlock = Index;
+			SubChapter.Slug = MakeSlug(Block.Text, Document.SubChapters.Num() + 1);
+			Document.SubChapters.Add(SubChapter);
+		}
+
+		if (Document.SubChapters.Num() > 0)
+		{
+			Document.SubChapters.Last().LastBlock = Document.Blocks.Num() - 1;
+		}
+		else if (Document.Blocks.Num() > 0)
+		{
+			FBookSubChapter SubChapter;
+			SubChapter.Title = Document.Title.IsEmpty() ? TEXT("Book") : Document.Title;
+			SubChapter.HeadingLevel = 1;
+			SubChapter.FirstBlock = 0;
+			SubChapter.LastBlock = Document.Blocks.Num() - 1;
+			SubChapter.Slug = MakeSlug(SubChapter.Title, 1);
+			Document.SubChapters.Add(SubChapter);
+		}
+
+		for (FPageData& Page : Document.Pages)
+		{
+			Page.SubChapterIndex = INDEX_NONE;
+			for (int32 Index = 0; Index < Document.SubChapters.Num(); ++Index)
+			{
+				if (Page.FirstBlock >= Document.SubChapters[Index].FirstBlock
+					&& Page.FirstBlock <= Document.SubChapters[Index].LastBlock)
+				{
+					Page.SubChapterIndex = Index;
+					break;
+				}
+			}
+		}
+
+		for (int32 Index = 0; Index < Document.SubChapters.Num(); ++Index)
+		{
+			FBookSubChapter& SubChapter = Document.SubChapters[Index];
+			SubChapter.FirstPage = 0;
+			SubChapter.LastPage = 0;
+			for (const FPageData& Page : Document.Pages)
+			{
+				if (Page.SubChapterIndex != Index)
+				{
+					continue;
+				}
+
+				if (SubChapter.FirstPage == 0)
+				{
+					SubChapter.FirstPage = Page.Number;
+				}
+				SubChapter.LastPage = Page.Number;
+			}
+		}
+	}
 }
 
 FString UMarkdownLibrary::ResolveBookPath(const FString& InPath)
@@ -241,6 +389,8 @@ bool UMarkdownLibrary::LoadMarkdownDocument(const FString& InPath, FMarkdownDocu
 	{
 		OutDocument.Title = FPaths::GetBaseFilename(OutDocument.SourcePath);
 	}
+
+	BuildStructure(OutDocument);
 
 	return true;
 }

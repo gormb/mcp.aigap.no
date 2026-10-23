@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BookTypes.h"
 #include "MarkdownTypes.generated.h"
 
 /** Structural element produced by the markdown parser. */
@@ -56,4 +57,12 @@ struct FMarkdownDocument
 
 	UPROPERTY(BlueprintReadOnly, Category = "Markdown")
 	TArray<FMarkdownBlock> Blocks;
+
+	/** Narration units derived from `##` / `###` headings. */
+	UPROPERTY(BlueprintReadOnly, Category = "Markdown")
+	TArray<FBookSubChapter> SubChapters;
+
+	/** Page markers (`#### p. N`) with the blocks they cover. */
+	UPROPERTY(BlueprintReadOnly, Category = "Markdown")
+	TArray<FPageData> Pages;
 };

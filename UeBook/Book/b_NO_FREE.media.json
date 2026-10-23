@@ -1,0 +1,16 @@
+{
+  "bookId": "b_NO_FREE",
+  "title": "LifeDemandedDeath",
+  "pdfUrl": "https://aigap.no/b/b/LifeDemandedDeath/b_NO_FREE.md",
+  "streamBaseUrl": "https://media.aigap.no/lifedemandeddeath",
+  "audioExtension": "mp3",
+  "defaultNarrator": "author",
+  "narrators": [
+    {
+      "id": "author",
+      "displayName": "Author",
+      "language": "no",
+      "clips": []
+    }
+  ]
+}

@@ -1,12 +1,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BookTypes.h"
 #include "MarkdownTypes.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Text/STextBlock.h"
 
 DECLARE_DELEGATE(FOnBookReaderClosed);
+DECLARE_DELEGATE(FOnBookReaderAction);
+DECLARE_DELEGATE_OneParam(FOnBookSubChapterChanged, int32 /*SubChapterIndex*/);
 
 /** Clickable text that opens a URL in the platform browser. */
 class SBookLink : public SCompoundWidget
@@ -30,34 +33,57 @@ private:
 	TSharedPtr<STextBlock> Label;
 };
 
-/** Fullscreen scrolling reader for a parsed markdown document. */
+/**
+ * Fullscreen scrolling reader for a parsed markdown document.
+ * Experience state is pushed in by the owner; the widget only reports user intent.
+ */
 class SBookReader : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SBookReader) {}
 		SLATE_ARGUMENT(FMarkdownDocument, Document)
 		SLATE_EVENT(FOnBookReaderClosed, OnClosed)
+		SLATE_EVENT(FOnBookReaderAction, OnCycleMode)
+		SLATE_EVENT(FOnBookReaderAction, OnToggleNarration)
+		SLATE_EVENT(FOnBookReaderAction, OnCycleNarrator)
+		SLATE_EVENT(FOnBookReaderAction, OnOpenLink)
+		SLATE_EVENT(FOnBookSubChapterChanged, OnSubChapterChanged)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+
+	/** Presentation state pushed by the owner. */
+	void SetMode(EExperienceMode InMode);
+	void SetNarratorName(const FString& InNarratorName);
+	void SetPosition(const FBookPosition& InPosition);
 
 	virtual bool SupportsKeyboardFocus() const override { return true; }
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 
-	/** Moves the view to the next (1) or previous (-1) heading. */
-	void JumpToChapter(int32 Direction);
-
 private:
 	TSharedRef<SWidget> MakeBlockWidget(const FMarkdownBlock& Block);
 	void BuildBlocks();
+	void JumpToSubChapter(int32 Direction);
+	void ScrollToSubChapter(int32 SubChapterIndex);
+	void ScrollToBlock(int32 BlockIndex);
+	void UpdateStatus();
 
-FMarkdownDocument Document;
-FOnBookReaderClosed OnClosed;
+	FMarkdownDocument Document;
+	FOnBookReaderClosed OnClosed;
+	FOnBookReaderAction OnCycleMode;
+	FOnBookReaderAction OnToggleNarration;
+	FOnBookReaderAction OnCycleNarrator;
+	FOnBookReaderAction OnOpenLink;
+	FOnBookSubChapterChanged OnSubChapterChanged;
 
-TSharedPtr<SScrollBox> ScrollBox;
-TArray<TSharedPtr<SWidget>> BlockWidgets;
-TArray<int32> HeadingBlockIndices;
-int32 CurrentHeadingIndex = INDEX_NONE;
-int32 FramesSinceConstruct = 0;
+	EExperienceMode Mode = EExperienceMode::Codex;
+	FString NarratorName;
+	int32 CurrentSubChapterIndex = 0;
+	int32 CurrentPageNumber = 0;
+
+	TSharedPtr<SScrollBox> ScrollBox;
+	TSharedPtr<STextBlock> StatusLabel;
+	TArray<TSharedPtr<SWidget>> BlockWidgets;
+	int32 FramesSinceConstruct = 0;
 };

@@ -1,27 +1,137 @@
-# UeBook — Development Notes
+# UeBook — Development Notes & Architecture Roadmap
 
-Unreal Engine 5.8 project. Copied from the `UeBlank` template (blank level, MCP tooling enabled).
+Unreal Engine 5.8 project framework. Copied from the `UeBlank` template (blank level, MCP tooling enabled).
 
-## Project layout
+---
+
+## 1. Project Layout & Environment
 
 | Path | Purpose |
 | --- | --- |
-| `UeBook.uproject` | Project descriptor (Engine 5.8, `ModelContextProtocol` + `AllToolsets` plugins) |
-| `Config/` | Project config (`DefaultEngine.ini`, `DefaultGame.ini`, `DefaultInput.ini`, editor settings) |
-| `Content/` | Assets — currently `Maps/HelloWorld.umap` |
-| `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` | Generated, git-ignored, recreated on first open |
+| `UeBook.uproject` | Project descriptor (Engine 5.8, `ModelContextProtocol` + `AllToolsets` plugins enabled) |
+| `Config/` | Engine and project configuration (`DefaultEngine.ini`, `DefaultGame.ini`, `DefaultInput.ini`) |
+| `Content/` | Game assets — `Maps/L_Main` (default), `Maps/L_Reader`, `Maps/HelloWorld`, `Fonts/EBGaramond_*` |
+| `Book/` | Loose markdown and the `.media.json` manifest read at runtime; `b_NO_FREE.md` is the default book |
+| `Fonts/` | EB Garamond source `.ttf` files (SIL OFL) and the licence; imported into `Content/Fonts` by `Scripts/ImportFonts.py` |
+| `Scripts/` | Editor automation: `CreateLevels.py`, `ImportFonts.py` |
+| `Source/UeBook/` | Runtime module: markdown parser, reader widget, book state subsystem, audio director |
+| `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` | Engine-generated directories (git-ignored, recreated on build) |
 
-## Getting started
+### Getting Started
+1. Open `UeBook.uproject` with Unreal Engine 5.8 (generates missing intermediate binaries/cache).
+2. The editor exposes MCP tools at `http://127.0.0.1:8000/mcp`, configured via `.mcp.json` in the workspace root.
 
-1. Open `UeBook.uproject` with Unreal Engine 5.8 (it will generate `Binaries/`, `Intermediate/`, `Saved/` and `DerivedDataCache/`).
-2. The editor exposes MCP tools on `http://127.0.0.1:8000/mcp`, matching `.mcp.json` in the repo root.
+---
 
-## Content plan
+## 2. Architecture & Version Roadmap
 
-The book *LifeDemandedDeath* is the source material for this project. It is imported verbatim below from
-`https://aigap.no/b/b/LifeDemandedDeath/b_NO_FREE.md` (last fetched 2026-10-22) and drives development.
+### **Core Design Principle (Multi-Client Architecture)**
+The engine decouples **Data Ingestion & Domain Logic** from the **Presentation Layer**. Core Markdown parsing, subchapter token extraction (`#### p. N`, `🎵 [Track](URL)`), and soundtrack state management run in a platform-agnostic pipeline usable across standard 2D clients (Desktop / Web / Mobile) and spatial environments alike.
 
-## Book
+---
+
+### **Version Roadmap**
+
+* **Version 1.x (Core Ingestion Baseline):**
+  * Parses raw `.md` source text, extracting page boundaries (`#### p. N`), headings (`#`, `##`, `###`), and soundtrack anchors (`🎵 [Track](URL)`).
+  * Exposes parsed subchapter arrays to generic viewport widgets and standard media triggers.
+
+* **Version 2.0 (Target VR Presentation Client — Meta Quest 3):**
+  * **Immersive Rendering:** Translates core subchapter states into a world-space 3D book actor (`BP_VRBookReader`) with curved paper shaders and high-density typography (*EB Garamond* atlas at 2048x2048).
+  * **Audio Pipeline:** Crossfades subchapter music using dual `UAudioComponent` submixes while playing spatialized 3D ambient layers (rain, wind, hums).
+  * **Atmosphere & Interaction:** Syncs scene lighting palettes to chapter metadata and supports Quest 3 hand tracking (pinch-to-turn page flips).
+  * **Mobile VR Performance Target:** Android/Vulkan with Forward Shading and 4x MSAA, locked at 72–90 FPS.
+
+---
+
+## 3. Core Engine & Client Specifications
+
+### A. Core C++ Parser Library (`UMarkdownParserLibrary`)
+Platform-agnostic parsing layer that converts raw `.md` text into structured runtime domain models (`FSubChapter`, `FPageData`):
+* **Page Break (`#### p. N`):** Splitting token evaluated by character/viewport layout bounds.
+* **Subchapter Header (`### [Title]` / `## [Title]`):** Pushes new `FSubChapter` entries and fires chapter state events.
+* **Soundtrack Token (`🎵 [Track Name; Artist](URL)`):** Stripped from display text and converted into metadata events for the Audio Director.
+* **RichText Transpilation:** Converts inline Markdown (`**bold**`, `*italic*`) to XML tags (`<b>`, `<i>`) targeting `URichTextBlock` style sets.
+
+### B. Audio & Lighting State Machine
+* **Dual-Submix Music Crossfader:** Smooth 2.0-second crossfades between subchapter tracks upon crossing chapter boundaries.
+* **Spatialized Environmental Audio:** Keeps main soundtracks in stereo while positioning thematic ambient audio sources in 3D world space.
+* **Adaptive Scene Lighting:** Translates subchapter metadata into ambient lighting transitions (e.g., cold blue, dark void, warm amber).
+
+### C. VR Client Adaptor (Meta Quest 3)
+* **3D World-Space Reader:** `UWidgetComponent` mapped to a 3D book mesh with vertex paper-bending shaders.
+* **Spatial Input:** Quest 3 hand-tracking pinch-and-pull interactions with spatialized `SFX_PageTurn` audio feedback.
+
+---
+
+## 4. Experience Modes & Sound Book
+
+The same parsed spine powers several ways of experiencing the material. Every mode shares one cursor
+(`FBookPosition { SubChapterIndex, PageIndex }`); only the presentation adapter and the event consumers differ,
+so a page turned anywhere is a page turned everywhere.
+
+| Mode | Experience | Status |
+| --- | --- | --- |
+| **M0 · Link** | Open the original manuscript/PDF in the OS browser | scaffolded (`L`, `BookSettings.PdfUrl`) |
+| **M1 · Codex** | Classical typographic reading — EB Garamond, justified measure, drop caps, paper / noir themes | implemented (EB Garamond, measure, dark theme) |
+| **M2 · Score** | Codex plus soundtrack crossfades and ambient beds under the text | scaffolded (music stream + ducking, needs a stream URL) |
+| **M3 · Sound Book** | Recorded narration (author and guest readers) with read-along highlight, narrator switching, resume | scaffolded (manifest + streaming + auto-advance, needs recordings) |
+| **M4 · Studio** | Spatial staging on desktop + headphones: narrator presence, rain/wind layers, one "room" per chapter | scaffolded (narration spatialization flag) |
+| **M5 · VR World** | Quest 3: the book as a physical object inside a world that changes per chapter, hand-tracked page turns | roadmap V2 |
+| **M6 · Speculative** | Text-driven generative worlds — null-sum field, motorway memory, ghost reader, marginalia lights | speculative |
+
+### Implemented scaffold
+
+* **Shared cursor** — `UBookStateSubsystem` (game instance subsystem) owns the open book, the
+  `FBookPosition` cursor, the mode and the narrator; everything else listens to `OnPositionChanged` / `OnModeChanged`.
+* **Structure** — the parser now derives `FBookSubChapter` (one per `##`/`###`, 86 in this book) and
+  `FPageData` (one per `#### p. N`, 191 pages) with block ranges, page ranges and URL-safe slugs (`02-nulloppsummering`).
+* **Media manifest** — `Book/b_NO_FREE.media.json` (optional). Missing clips are derived as
+  `<streamBaseUrl>/<narrator>/<slug>.<ext>`; without a manifest the project settings are used.
+* **Audio director** — `UBookAudioDirectorComponent` streams narration and music through `UMediaPlayer` +
+  `UMediaSoundComponent`, ducks music while narration plays, and advances the cursor when a clip ends.
+* **Resume** — subchapter, page, mode and narrator are stored in the `UeBookProgress` save slot per book.
+* **Fonts** — EB Garamond (SIL OFL, static Regular/Bold/Italic/BoldItalic) is imported with inline font data and
+  wrapped into runtime composite fonts; the engine font provides the `♪` marker glyph.
+
+### Controls (2D reader)
+
+| Key | Action |
+| --- | --- |
+| `M` | cycle mode (Codex → Score → Sound Book → Studio) |
+| `Space` | start/stop narration |
+| `N` | next narrator |
+| `L` | open the source link |
+| `Page Up` / `Page Down` | previous / next subchapter |
+| `Home` / `End` | start / end of book |
+| `Esc` | close the reader |
+
+### Configuration
+
+`Config/DefaultGame.ini` → `[/Script/UeBook.BookSettings]`: `PdfUrl`, `StreamBaseUrl`, `MusicStreamUrl`,
+`DefaultNarratorId`, `AudioExtension`, `DefaultMode`.
+
+Console commands: `Book.Mode <link|codex|score|soundbook|studio|vr>`, `Book.Narration`, `Book.Narrator <id>`,
+`Book.Step next|prev`, `Book.Status`, plus `Book.Open`, `Book.Close`, `Book.List`.
+
+### Sound Book (narration)
+
+* **Granularity:** one clip per page marker (`#### p. N` — 191 pages). Page-level clips stay in sync with the
+  reader for free, allow gapless navigation and let page-level resume work without seeking inside long files.
+* **Manifest:** sidecar `Book/<book>.media.json` (the `.md` stays a verbatim import of the source):
+  narrators, language, per-clip `{ page, file, durationSec, subChapter }`, optional playlist/anchor cues.
+* **Layout:** `Book/audio/<bookId>/<narrationId>/pNNN.ogg` — one folder per narrator so guest readers can be
+  mixed per subchapter.
+* **Playback:** `NarrationSubmix` with music and ambience ducked ~6 dB while narration runs; a 2 s crossfade
+  applies when the narration hands back to the soundtrack.
+* **Read-along:** the manifest maps clip → page → block range, so M1/M3 can highlight the page being spoken.
+* **Resume:** the shared cursor is persisted (save game/config) so listening, reading and VR all continue where
+  the last mode stopped.
+* **Recording spec:** mono 48 kHz WAV, ≈ -16 LUFS integrated, 150–300 ms head/tail silence, page-aligned takes.
+
+---
+
+## 5. Source Content
 
 <!-- Source: https://aigap.no/b/b/LifeDemandedDeath/b_NO_FREE.md -->
 

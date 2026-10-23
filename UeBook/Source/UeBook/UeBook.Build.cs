@@ -11,12 +11,16 @@ public class UeBook : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
-			"InputCore"
+			"InputCore",
+			"Json",
+			"MediaAssets",
+			"DeveloperSettings"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"ApplicationCore",
+			"AudioMixer",
 			"Slate",
 			"SlateCore"
 		});
