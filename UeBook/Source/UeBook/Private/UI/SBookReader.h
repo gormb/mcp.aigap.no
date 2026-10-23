@@ -10,6 +10,7 @@
 DECLARE_DELEGATE(FOnBookReaderClosed);
 DECLARE_DELEGATE(FOnBookReaderAction);
 DECLARE_DELEGATE_OneParam(FOnBookSubChapterChanged, int32 /*SubChapterIndex*/);
+DECLARE_DELEGATE_OneParam(FOnBookModeSelected, EExperienceMode /*Mode*/);
 
 /** Clickable text that opens a URL in the platform browser. */
 class SBookLink : public SCompoundWidget
@@ -48,6 +49,7 @@ public:
 		SLATE_EVENT(FOnBookReaderAction, OnCycleNarrator)
 		SLATE_EVENT(FOnBookReaderAction, OnOpenLink)
 		SLATE_EVENT(FOnBookSubChapterChanged, OnSubChapterChanged)
+		SLATE_EVENT(FOnBookModeSelected, OnModeSelected)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -56,6 +58,12 @@ public:
 	void SetMode(EExperienceMode InMode);
 	void SetNarratorName(const FString& InNarratorName);
 	void SetPosition(const FBookPosition& InPosition);
+
+	/** Mode ladder (M0..M6) with availability, pushed by the owner. */
+	void SetModeInfos(const TArray<FBookModeInfo>& InModeInfos);
+
+	/** Opens or closes the mode picker overlay. */
+	void ShowModePicker(bool bShow);
 
 	virtual bool SupportsKeyboardFocus() const override { return true; }
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
@@ -68,6 +76,12 @@ private:
 	void ScrollToSubChapter(int32 SubChapterIndex);
 	void ScrollToBlock(int32 BlockIndex);
 	void UpdateStatus();
+	void RebuildModeBar();
+	void RebuildPicker();
+	void TogglePicker();
+	void SelectModeAt(int32 Index);
+	void MovePickerSelection(int32 Delta);
+	EVisibility GetPickerVisibility() const;
 
 	FMarkdownDocument Document;
 	FOnBookReaderClosed OnClosed;
@@ -76,11 +90,19 @@ private:
 	FOnBookReaderAction OnCycleNarrator;
 	FOnBookReaderAction OnOpenLink;
 	FOnBookSubChapterChanged OnSubChapterChanged;
+	FOnBookModeSelected OnModeSelected;
 
 	EExperienceMode Mode = EExperienceMode::Codex;
 	FString NarratorName;
 	int32 CurrentSubChapterIndex = 0;
 	int32 CurrentPageNumber = 0;
+
+	TArray<FBookModeInfo> ModeInfos;
+	TSharedPtr<class SHorizontalBox> ModeBar;
+	TSharedPtr<class SVerticalBox> PickerList;
+	TSharedPtr<class SWidget> PickerLayer;
+	bool bPickerOpen = false;
+	int32 PickerIndex = 0;
 
 	TSharedPtr<SScrollBox> ScrollBox;
 	TSharedPtr<STextBlock> StatusLabel;

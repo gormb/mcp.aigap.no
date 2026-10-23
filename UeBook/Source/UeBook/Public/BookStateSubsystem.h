@@ -50,6 +50,17 @@ public:
 	void CycleMode();
 	void SetModeByName(const FString& ModeName);
 
+	/** Selects by ladder index (0 = Link … 6 = Speculative) when that mode is available. */
+	void SetModeByIndex(int32 Index);
+
+	/** Number of modes in the ladder (M0..M6). */
+	static int32 GetModeCount();
+
+	/** Availability plus human text for every mode, in ladder order. */
+	void GetModeInfos(TArray<FBookModeInfo>& OutInfos) const;
+
+	bool IsModeAvailable(EExperienceMode InMode, FString& OutReason) const;
+
 	UFUNCTION(BlueprintPure, Category = "Book")
 	FString GetModeName() const;
 

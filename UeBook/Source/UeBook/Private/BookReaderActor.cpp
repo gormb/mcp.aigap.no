@@ -105,7 +105,8 @@ bool ABookReaderActor::OpenBook(const FString& InPath)
 		.OnToggleNarration(FOnBookReaderAction::CreateUObject(this, &ABookReaderActor::HandleToggleNarration))
 		.OnCycleNarrator(FOnBookReaderAction::CreateUObject(this, &ABookReaderActor::HandleCycleNarrator))
 		.OnOpenLink(FOnBookReaderAction::CreateUObject(this, &ABookReaderActor::HandleOpenLink))
-		.OnSubChapterChanged(FOnBookSubChapterChanged::CreateUObject(this, &ABookReaderActor::HandleSubChapterChanged));
+		.OnSubChapterChanged(FOnBookSubChapterChanged::CreateUObject(this, &ABookReaderActor::HandleSubChapterChanged))
+		.OnModeSelected(FOnBookModeSelected::CreateUObject(this, &ABookReaderActor::HandleModeSelected));
 
 	PushStateToReader();
 
@@ -159,6 +160,10 @@ void ABookReaderActor::PushStateToReader()
 	ReaderWidget->SetMode(State->GetMode());
 	ReaderWidget->SetNarratorName(State->GetNarratorDisplayName());
 	ReaderWidget->SetPosition(State->GetPosition());
+
+	TArray<FBookModeInfo> ModeInfos;
+	State->GetModeInfos(ModeInfos);
+	ReaderWidget->SetModeInfos(ModeInfos);
 }
 
 void ABookReaderActor::CycleMode()
@@ -218,6 +223,21 @@ void ABookReaderActor::HandleCycleNarrator()
 void ABookReaderActor::HandleOpenLink()
 {
 	OpenSourceLink();
+}
+
+void ABookReaderActor::HandleModeSelected(EExperienceMode NewMode)
+{
+	// Link is an action from the mode ladder, the reader state stays where it was.
+	if (NewMode == EExperienceMode::Link)
+	{
+		OpenSourceLink();
+		return;
+	}
+
+	if (UBookStateSubsystem* State = GetBookState())
+	{
+		State->SetModeByIndex(static_cast<int32>(NewMode));
+	}
 }
 
 void ABookReaderActor::HandleSubChapterChanged(int32 SubChapterIndex)
@@ -376,8 +396,33 @@ namespace
 		}
 	}
 
-	void BookStatusCommand(const TArray<FString>& Args, UWorld* World)
+	void BookModesCommand(const TArray<FString>& Args, UWorld* World)
 	{
+		UBookStateSubsystem* State = World && World->GetGameInstance()
+			? World->GetGameInstance()->GetSubsystem<UBookStateSubsystem>()
+			: nullptr;
+		if (!State)
+		{
+			return;
+		}
+
+		TArray<FBookModeInfo> Infos;
+		State->GetModeInfos(Infos);
+		UE_LOG(LogBookReader, Log, TEXT("Experience ladder (current %s):"), *State->GetModeName());
+		for (int32 Index = 0; Index < Infos.Num(); ++Index)
+		{
+			const FBookModeInfo& Info = Infos[Index];
+			const FString Status = Info.bAvailable ? TEXT("available") : Info.UnavailableReason;
+			UE_LOG(LogBookReader, Log, TEXT("  M%d  %s  -  %s"), Index, *Info.Label, *Status);
+		}
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs GBookModesCommand(
+		TEXT("Book.Modes"),
+		TEXT("Lists the experience ladder with availability."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&BookModesCommand));
+
+	void BookStatusCommand(const TArray<FString>& Args, UWorld* World)	{
 		UBookStateSubsystem* State = World && World->GetGameInstance()
 			? World->GetGameInstance()->GetSubsystem<UBookStateSubsystem>()
 			: nullptr;

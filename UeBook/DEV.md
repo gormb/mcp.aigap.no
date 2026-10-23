@@ -98,21 +98,30 @@ so a page turned anywhere is a page turned everywhere.
 
 | Key | Action |
 | --- | --- |
-| `M` | cycle mode (Codex → Score → Sound Book → Studio) |
+| `Tab` | open/close the mode picker (M0–M6 list with availability) |
+| `↑` / `↓` | move inside the picker (skips unavailable modes) |
+| `Enter` | apply the highlighted mode |
+| `1`–`7` | jump straight to M0–M6 (unavailable modes are ignored) |
+| `M` | cycle to the next *available* mode |
 | `Space` | start/stop narration |
 | `N` | next narrator |
 | `L` | open the source link |
 | `Page Up` / `Page Down` | previous / next subchapter |
 | `Home` / `End` | start / end of book |
-| `Esc` | close the reader |
+| `Esc` | close the picker, or close the reader when no picker is open |
+
+The header also shows a clickable mode bar (`M0 Link` … `M6 Speculative`); the active chip is highlighted,
+unavailable modes are dimmed and carry the reason in their tooltip. `Link` is an action (opens the browser)
+rather than a reading state, so it never becomes the active chip.
 
 ### Configuration
 
 `Config/DefaultGame.ini` → `[/Script/UeBook.BookSettings]`: `PdfUrl`, `StreamBaseUrl`, `MusicStreamUrl`,
 `DefaultNarratorId`, `AudioExtension`, `DefaultMode`.
 
-Console commands: `Book.Mode <link|codex|score|soundbook|studio|vr>`, `Book.Narration`, `Book.Narrator <id>`,
-`Book.Step next|prev`, `Book.Status`, plus `Book.Open`, `Book.Close`, `Book.List`.
+Console commands: `Book.Mode <link|codex|score|soundbook|studio|vr>`, `Book.Modes` (prints the ladder with
+availability and reasons), `Book.Narration`, `Book.Narrator <id>`, `Book.Step next|prev`, `Book.Status`,
+plus `Book.Open`, `Book.Close`, `Book.List`.
 
 ### Sound Book (narration)
 

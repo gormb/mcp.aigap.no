@@ -4,12 +4,15 @@
 #include "HAL/PlatformProcess.h"
 #include "Input/Events.h"
 #include "Styling/CoreStyle.h"
+#include "Styling/SlateTypes.h"
 #include "UI/BookFonts.h"
 #include "UObject/Class.h"
+#include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSpacer.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace
@@ -18,6 +21,35 @@ namespace
 	const FLinearColor HeadingColor(1.0f, 0.94f, 0.86f);
 	const FLinearColor MutedColor(0.42f, 0.43f, 0.48f);
 	const FLinearColor LinkColor(0.55f, 0.75f, 0.95f);
+	const FLinearColor AccentColor(0.14f, 0.29f, 0.42f);
+	const FLinearColor ChipColor(0.09f, 0.09f, 0.11f);
+
+	FSlateBrush MakeFlatBrush(const FLinearColor& Color)
+	{
+		FSlateBrush Brush = *FCoreStyle::Get().GetBrush("WhiteBrush");
+		Brush.TintColor = FSlateColor(Color);
+		Brush.DrawAs = ESlateBrushDrawType::Box;
+		return Brush;
+	}
+
+	FButtonStyle MakeChipStyle(const FLinearColor& Normal, const FLinearColor& Hover)
+	{
+		FButtonStyle Style;
+		Style.SetNormal(MakeFlatBrush(Normal));
+		Style.SetHovered(MakeFlatBrush(Hover));
+		Style.SetPressed(MakeFlatBrush(Hover));
+		Style.SetDisabled(MakeFlatBrush(FLinearColor(0.06f, 0.06f, 0.07f)));
+		Style.SetNormalPadding(FMargin(0.0f));
+		Style.SetPressedPadding(FMargin(0.0f));
+		return Style;
+	}
+
+	const FButtonStyle& GetChipStyle(bool bActive)
+	{
+		static const FButtonStyle ActiveStyle = MakeChipStyle(AccentColor, FLinearColor(0.19f, 0.37f, 0.53f));
+		static const FButtonStyle IdleStyle = MakeChipStyle(ChipColor, FLinearColor(0.17f, 0.17f, 0.21f));
+		return bActive ? ActiveStyle : IdleStyle;
+	}
 
 	TSharedRef<SWidget> WrapText(const FString& Text, const FSlateFontInfo& Font, const FLinearColor& Color, const FMargin& Padding)
 	{
@@ -89,12 +121,16 @@ void SBookReader::Construct(const FArguments& InArgs)
 	OnCycleNarrator = InArgs._OnCycleNarrator;
 	OnOpenLink = InArgs._OnOpenLink;
 	OnSubChapterChanged = InArgs._OnSubChapterChanged;
+	OnModeSelected = InArgs._OnModeSelected;
 
 	const FString Title = Document.Title.IsEmpty() ? TEXT("Book") : Document.Title;
 
 	ChildSlot
 	[
-		SNew(SBorder)
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		[
+			SNew(SBorder)
 		.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 		.BorderBackgroundColor(FLinearColor(0.02f, 0.02f, 0.03f, 0.98f))
 		.Padding(FMargin(0.0f))
@@ -133,10 +169,16 @@ void SBookReader::Construct(const FArguments& InArgs)
 					]
 					+ SVerticalBox::Slot()
 					.AutoHeight()
-					.Padding(FMargin(0.0f, 4.0f, 0.0f, 0.0f))
+					.Padding(FMargin(0.0f, 10.0f, 0.0f, 0.0f))
+					[
+						SAssignNew(ModeBar, SHorizontalBox)
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.0f, 6.0f, 0.0f, 0.0f))
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("M  mode      Space  listen      N  narrator      L  link      Page Up / Page Down  chapter      Home / End      Esc  close")))
+						.Text(FText::FromString(TEXT("Tab  modes      M  cycle      Space  listen      N  narrator      L  link      Page Up / Page Down  chapter      Esc  close")))
 						.Font(BookFonts::Get(12))
 						.ColorAndOpacity(MutedColor)
 					]
@@ -154,17 +196,262 @@ void SBookReader::Construct(const FArguments& InArgs)
 			[
 				SNew(SSpacer)
 			]
+			]
+		]
+		+ SOverlay::Slot()
+		[
+			SAssignNew(PickerLayer, SBorder)
+			.Visibility(this, &SBookReader::GetPickerVisibility)
+			.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+			.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.72f))
+			.Padding(FMargin(0.0f))
+			.HAlign(HAlign_Center)
+			.VAlign(VAlign_Center)
+			[
+				SNew(SBox)
+				.WidthOverride(640.0f)
+				[
+					SNew(SBorder)
+					.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+					.BorderBackgroundColor(FLinearColor(0.05f, 0.05f, 0.06f, 0.99f))
+					.Padding(FMargin(28.0f))
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("Experience modes")))
+							.Font(BookFonts::Get(26, true))
+							.ColorAndOpacity(HeadingColor)
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(0.0f, 6.0f, 0.0f, 16.0f))
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("Up / Down  select       Enter  apply      1-7  direct      Esc  close")))
+							.Font(BookFonts::Get(12))
+							.ColorAndOpacity(MutedColor)
+						]
+						+ SVerticalBox::Slot()
+						.FillHeight(1.0f)
+						[
+							SAssignNew(PickerList, SVerticalBox)
+						]
+					]
+				]
+			]
 		]
 	];
 
 	BuildBlocks();
 	UpdateStatus();
+	RebuildModeBar();
 }
 
 void SBookReader::SetMode(EExperienceMode InMode)
 {
 	Mode = InMode;
+	RebuildModeBar();
 	UpdateStatus();
+}
+
+void SBookReader::SetModeInfos(const TArray<FBookModeInfo>& InModeInfos)
+{
+	ModeInfos = InModeInfos;
+	RebuildModeBar();
+	if (bPickerOpen)
+	{
+		RebuildPicker();
+	}
+}
+
+EVisibility SBookReader::GetPickerVisibility() const
+{
+	return bPickerOpen ? EVisibility::Visible : EVisibility::Collapsed;
+}
+
+void SBookReader::RebuildModeBar()
+{
+	if (!ModeBar.IsValid())
+	{
+		return;
+	}
+
+	ModeBar->ClearChildren();
+
+	for (int32 Index = 0; Index < ModeInfos.Num(); ++Index)
+	{
+		const FBookModeInfo& Info = ModeInfos[Index];
+		const bool bActive = Info.Mode == Mode;
+		const FString Tip = Info.bAvailable
+			? FString::Printf(TEXT("%s - %s"), *Info.Label, *Info.Description)
+			: FString::Printf(TEXT("%s - %s"), *Info.Label, *Info.UnavailableReason);
+
+		ModeBar->AddSlot()
+			.AutoWidth()
+			.Padding(FMargin(0.0f, 0.0f, 6.0f, 0.0f))
+			[
+				SNew(SButton)
+				.ButtonStyle(&GetChipStyle(bActive))
+				.ContentPadding(FMargin(10.0f, 5.0f))
+				.IsEnabled(Info.bAvailable)
+				.RenderOpacity(Info.bAvailable ? 1.0f : 0.45f)
+				.ToolTipText(FText::FromString(Tip))
+				.OnClicked_Lambda([this, Index]()
+				{
+					SelectModeAt(Index);
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(FString::Printf(TEXT("M%d  %s"), Index, *Info.Label)))
+					.Font(BookFonts::Get(13, bActive))
+					.ColorAndOpacity(bActive ? FLinearColor(1.0f, 0.97f, 0.9f) : FLinearColor(0.72f, 0.75f, 0.8f))
+				]
+			];
+	}
+}
+
+void SBookReader::RebuildPicker()
+{
+	if (!PickerList.IsValid())
+	{
+		return;
+	}
+
+	PickerList->ClearChildren();
+
+	for (int32 Index = 0; Index < ModeInfos.Num(); ++Index)
+	{
+		const FBookModeInfo& Info = ModeInfos[Index];
+		const bool bSelected = Index == PickerIndex;
+		const bool bActive = Info.Mode == Mode;
+
+		TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox);
+
+		Row->AddSlot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(FString::Printf(TEXT("M%d"), Index)))
+				.Font(BookFonts::Get(12, true))
+				.ColorAndOpacity(MutedColor)
+			];
+
+		Row->AddSlot()
+			.AutoWidth()
+			.Padding(FMargin(12.0f, 0.0f, 0.0f, 0.0f))
+			.VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Info.Label))
+				.Font(BookFonts::Get(19, bActive))
+				.ColorAndOpacity(Info.bAvailable ? HeadingColor : MutedColor)
+			];
+
+		Row->AddSlot()
+			.FillWidth(1.0f)
+			.Padding(FMargin(16.0f, 0.0f, 0.0f, 0.0f))
+			.VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Info.bAvailable ? Info.Description : Info.UnavailableReason))
+				.Font(BookFonts::Get(13))
+				.ColorAndOpacity(Info.bAvailable ? MutedColor : FLinearColor(0.62f, 0.40f, 0.36f))
+				.AutoWrapText(true)
+			];
+
+		if (bActive)
+		{
+			Row->AddSlot()
+				.AutoWidth()
+				.Padding(FMargin(12.0f, 0.0f, 0.0f, 0.0f))
+				.VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("active")))
+					.Font(BookFonts::Get(11, true))
+					.ColorAndOpacity(FLinearColor(0.62f, 0.82f, 0.62f))
+				];
+		}
+
+		PickerList->AddSlot()
+			.AutoHeight()
+			.Padding(FMargin(0.0f, 2.0f))
+			[
+				SNew(SButton)
+				.ButtonStyle(&GetChipStyle(bSelected))
+				.ContentPadding(FMargin(14.0f, 10.0f))
+				.IsEnabled(Info.bAvailable)
+				.RenderOpacity(Info.bAvailable ? 1.0f : 0.5f)
+				.ToolTipText(FText::FromString(Info.bAvailable ? Info.Description : Info.UnavailableReason))
+				.OnClicked_Lambda([this, Index]()
+				{
+					SelectModeAt(Index);
+					return FReply::Handled();
+				})
+				[
+					Row
+				]
+			];
+	}
+}
+
+void SBookReader::TogglePicker()
+{
+	ShowModePicker(!bPickerOpen);
+}
+
+void SBookReader::ShowModePicker(bool bShow)
+{
+	bPickerOpen = bShow;
+
+	if (bPickerOpen)
+	{
+		PickerIndex = FMath::Clamp(static_cast<int32>(Mode), 0, FMath::Max(ModeInfos.Num() - 1, 0));
+		RebuildPicker();
+	}
+}
+
+void SBookReader::SelectModeAt(int32 Index)
+{
+	if (!ModeInfos.IsValidIndex(Index) || !ModeInfos[Index].bAvailable)
+	{
+		return;
+	}
+
+	bPickerOpen = false;
+	OnModeSelected.ExecuteIfBound(ModeInfos[Index].Mode);
+}
+
+void SBookReader::MovePickerSelection(int32 Delta)
+{
+	if (ModeInfos.Num() == 0)
+	{
+		return;
+	}
+
+	int32 Candidate = PickerIndex;
+	while (true)
+	{
+		Candidate = FMath::Clamp(Candidate + Delta, 0, ModeInfos.Num() - 1);
+
+		if (ModeInfos[Candidate].bAvailable)
+		{
+			break;
+		}
+
+		if ((Delta > 0 && Candidate >= ModeInfos.Num() - 1) || (Delta < 0 && Candidate <= 0))
+		{
+			break;
+		}
+	}
+
+	PickerIndex = Candidate;
+	RebuildPicker();
 }
 
 void SBookReader::SetNarratorName(const FString& InNarratorName)
@@ -369,6 +656,46 @@ void SBookReader::Tick(const FGeometry& AllottedGeometry, const double InCurrent
 FReply SBookReader::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
 {
 	const FKey Key = InKeyEvent.GetKey();
+
+	if (Key == EKeys::Tab)
+	{
+		TogglePicker();
+		return FReply::Handled();
+	}
+
+	if (bPickerOpen)
+	{
+		if (Key == EKeys::Escape)
+		{
+			bPickerOpen = false;
+			return FReply::Handled();
+		}
+
+		if (Key == EKeys::Up || Key == EKeys::Down)
+		{
+			MovePickerSelection(Key == EKeys::Down ? 1 : -1);
+			return FReply::Handled();
+		}
+
+		if (Key == EKeys::Enter)
+		{
+			SelectModeAt(PickerIndex);
+			return FReply::Handled();
+		}
+	}
+
+	// 1-7 jump straight to a mode in the ladder.
+	static const FKey ModeKeys[] = {
+		EKeys::One, EKeys::Two, EKeys::Three, EKeys::Four, EKeys::Five, EKeys::Six, EKeys::Seven
+	};
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(ModeKeys); ++Index)
+	{
+		if (Key == ModeKeys[Index])
+		{
+			SelectModeAt(Index);
+			return FReply::Handled();
+		}
+	}
 
 	if (Key == EKeys::Escape)
 	{

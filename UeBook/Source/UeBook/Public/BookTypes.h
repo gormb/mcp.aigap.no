@@ -71,6 +71,31 @@ struct FBookSubChapter
 	FString Slug;
 };
 
+/** One entry in the experience ladder, with availability resolved by the book state. */
+USTRUCT(BlueprintType)
+struct FBookModeInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Book")
+	EExperienceMode Mode = EExperienceMode::Codex;
+
+	/** Short label, e.g. "Sound Book". */
+	UPROPERTY(BlueprintReadOnly, Category = "Book")
+	FString Label;
+
+	/** One-line explanation shown in the picker. */
+	UPROPERTY(BlueprintReadOnly, Category = "Book")
+	FString Description;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Book")
+	bool bAvailable = true;
+
+	/** Why the mode cannot be selected right now; empty when it is available. */
+	UPROPERTY(BlueprintReadOnly, Category = "Book")
+	FString UnavailableReason;
+};
+
 /** The single cursor shared by every experience mode. */
 USTRUCT(BlueprintType)
 struct FBookPosition

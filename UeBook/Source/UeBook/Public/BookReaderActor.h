@@ -66,6 +66,7 @@ private:
 	void HandleToggleNarration();
 	void HandleCycleNarrator();
 	void HandleOpenLink();
+	void HandleModeSelected(EExperienceMode NewMode);
 	void HandleSubChapterChanged(int32 SubChapterIndex);
 	void HandleStatePositionChanged(const FBookPosition& NewPosition);
 	void HandleStateModeChanged(EExperienceMode NewMode);
