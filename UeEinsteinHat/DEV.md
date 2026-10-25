@@ -23,18 +23,29 @@ The deliverable is a reusable, commercially distributable tiling system that ren
 | `UeEinsteinHat.uproject` | Project descriptor (Engine 5.8, `ModelContextProtocol` + `AllToolsets` plugins enabled) |
 | `Config/` | Engine and project configuration (`DefaultEngine.ini`, `DefaultGame.ini`, `DefaultInput.ini`, `DefaultEditorPerProjectUserSettings.ini`) |
 | `Content/` | Game assets — currently `Maps/HelloWorld` (default startup map) |
+| `Source/EinsteinHatTiler/` | Runtime C++ module — the tile geometry and the two tile actors |
 | `.vscode/mcp.json` | Points the editor MCP tooling at `http://127.0.0.1:8000/mcp` |
 | `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` | Engine-generated directories (git-ignored, recreated on build) |
+
+### Source tree
+| Path | Purpose |
+| --- | --- |
+| `Source/EinsteinHatTiler/Public/EinsteinHatTypes.h` | Header-only geometry "DNA": lattice points, the unit kite, the 13-vertex outline, the 8-kite decomposition, and the triangle-fan builder |
+| `Source/EinsteinHatTiler/Public/EinsteinHatLibrary.h` + `Private/EinsteinHatLibrary.cpp` | `UEinsteinHatLibrary` — Blueprint access to the geometry and mesh triangulation |
+| `Source/EinsteinHatTiler/Public/KiteActor.h` + `Private/KiteActor.cpp` | `AKiteActor` — the smallest physical unit (one kite) |
+| `Source/EinsteinHatTiler/Public/HatShape.h` + `Private/HatShape.cpp` | `AHatShape` — the container actor (the whole hat) |
 
 ### Getting Started
 1. Open `UeEinsteinHat.uproject` with Unreal Engine 5.8 (generates missing intermediate binaries/cache).
 2. The editor exposes MCP tools at `http://127.0.0.1:8000/mcp`, configured via `.vscode/mcp.json`.
-3. There is no `Source/` module yet — the project is Blueprint-only until the `KiteShape` / `Hat` / `MetaHat` C++ classes land (Milestone V–VI).
+3. The C++ module ships with the project. If you change it, close the editor and rebuild — Live Coding cannot add a module:
+   ```
+   "<UE_5.8>\Engine\Build\BatchFiles\Build.bat" UeEinsteinHatEditor Win64 Development -Project="<repo>\UeEinsteinHat\UeEinsteinHat.uproject"
+   ```
 
 ### Planned additions
 | Path | Purpose |
 | --- | --- |
-| `Source/EinsteinHatTiler/` | Runtime C++ module: `EinsteinHatTypes.h`, `KiteActor`, `HatShape` |
 | `Content/Blueprints/` | `BPC_EinsteinHatTiler*` Blueprint containers |
 | `Content/Materials/` | `M_HatTile*` tile and Penrose rhombus materials |
 | `Scripts/` | Editor automation (level creation, asset import) |
@@ -77,6 +88,61 @@ Three configuration axes drive the whole tiling system:
 | Kite mid-point | `KiteShape` | Raise or lower the mid-point of the kite |
 | Hat points | `Hat` | Raise or lower all points of the hat |
 | Spectre variants | `Hat` | Enable all Spectre versions — the outliers and the middle |
+
+### 4.4 C++ module (`Source/EinsteinHatTiler`)
+
+#### Geometry
+
+The hat is a **polykite**: eight congruent right kites with angles 60°/90°/120°/90°, laid out on a triangular lattice. Lattice coordinates are integers; they map to the plane as
+
+```
+LatticeToPlane(x, y) = (x + y/2, y * sqrt(3)/2)
+```
+
+The 13-vertex outline and the 8-kite decomposition live in `EinsteinHatTypes.h` as compile-time tables. The decomposition is **verified exact**: the union of the eight kites has a symmetric difference of zero against the 13-vertex outline, and the areas agree at `8 * sqrt(3)`.
+
+| Table | Contents |
+| --- | --- |
+| `GetHatOutline()` | 13 lattice vertices, counter-clockwise |
+| `GetUnitKite()` | The canonical kite `(0,0), (2,-1), (2,0), (1,1)` |
+| `GetHatKites()` | 8 kites, each ordered as 60° apex → 90° → 120° apex → 90°, counter-clockwise |
+
+Because lattice-to-plane is affine, a kite's centre is the midpoint of its long diagonal (the 60° apex and the 120° apex), which is what `KiteCentrePlane` returns.
+
+#### Mesh generation
+
+Each kite is triangulated as a four-triangle fan around that centre point. That single choice is what makes the elevation configs work:
+
+* `FEinsteinHatConfig::KiteMidpointHeight` raises or lowers the fan's centre vertex (Milestone VII).
+* `FEinsteinHatConfig::PointHeight` raises or lowers the shared kite corners, i.e. all points of the hat (Milestone VIII).
+
+`FEinsteinHatConfig` also carries `TileScale` (centimetres per lattice unit, default 100 — a hat is about 5 lattice units across) and `Variant`.
+
+#### Classes
+
+| Class | Role |
+| --- | --- |
+| `AKiteActor` | One kite on a `UProceduralMeshComponent`, centred on its own midpoint. `TileMaterial` overrides the default. `RebuildMesh()` is editor-callable. |
+| `AHatShape` | The whole hat as a single procedural mesh. `GetLocalCentre()` returns the local bounding-box centre; `Seed` applies a deterministic yaw (the hook for the seeded patch generator in §5.2). |
+
+Both actors rebuild in `OnConstruction`, so tweaking the config in the details panel updates the mesh live.
+
+#### Blueprint API (`UEinsteinHatLibrary`)
+
+| Function | Returns |
+| --- | --- |
+| `GetHatOutline(TileScale)` | 13 outline vertices in centimetres |
+| `GetHatKiteCentres(TileScale)` | 8 kite centres in centimetres |
+| `GetHatKiteCount()` | `8` |
+| `BuildHatMesh(Config, …)` | Vertices, triangles, normals, planar UVs for a full hat |
+| `BuildKiteMesh(Config, …)` | The same for the single unit kite |
+
+#### Status against the milestones
+
+* **Done** — the Hat outline, the 8-kite decomposition, `KiteActor`, `HatShape`, and the mid-point / point elevation configs (§4.3, Milestone VII–VIII hooks).
+* **Reserved** — `EEinsteinHatVariant::Turtle` and `::Spectre`. Selecting either logs a warning and falls back to the Hat; the geometry lands with Milestone IX.
+* **Not started** — `MetaHat` substitution (§4.2, Milestone VI), the seeded infinite patch, and the Penrose rhombus materials.
+
 
 ---
 
