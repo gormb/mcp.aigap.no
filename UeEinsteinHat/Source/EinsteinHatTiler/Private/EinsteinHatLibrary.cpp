@@ -36,6 +36,26 @@ namespace
 	{
 		OutNormals.Init(FVector::UpVector, Vertices.Num());
 	}
+
+	/**
+	 * The intrinsics backend is not linked yet (DEV.md HP-2 and HP-3). Keep the scalar path as the
+	 * reference so output stays identical, and only complain once per session.
+	 */
+	void WarnOnceIfAssemblyCoded(const FEinsteinHatConfig& Config)
+	{
+		if (Config.CodePath != EEinsteinHatCodePath::AssemblyCoded)
+		{
+			return;
+		}
+
+		static bool bWarned = false;
+		if (!bWarned)
+		{
+			bWarned = true;
+			UE_LOG(LogTemp, Warning,
+				TEXT("EinsteinHat: 'Assembly Coded' intrinsics path is not implemented yet; using the C++ path."));
+		}
+	}
 }
 
 TArray<FVector2D> UEinsteinHatLibrary::GetHatOutline(float TileScale)
@@ -73,6 +93,8 @@ void UEinsteinHatLibrary::BuildHatMesh(const FEinsteinHatConfig& Config, TArray<
 	OutVertices.Reset();
 	OutTriangles.Reset();
 
+	WarnOnceIfAssemblyCoded(Config);
+
 	if (Config.Variant != EEinsteinHatVariant::Hat)
 	{
 		// Turtle and Spectre are reserved (DEV.md milestone IX); fall back to the Hat so the
@@ -95,6 +117,8 @@ void UEinsteinHatLibrary::BuildKiteMesh(const FEinsteinHatConfig& Config, TArray
 {
 	OutVertices.Reset();
 	OutTriangles.Reset();
+
+	WarnOnceIfAssemblyCoded(Config);
 
 	EinsteinHatGeometry::AppendKite(EinsteinHatGeometry::GetUnitKite(), Config, OutVertices, OutTriangles);
 

@@ -15,6 +15,19 @@ enum class EEinsteinHatVariant : uint8
 	Spectre UMETA(DisplayName = "Spectre (reserved)")
 };
 
+/**
+ * Which implementation produces the geometry. AssemblyCoded is a code-path selector, not a
+ * quality setting: both paths must produce identical output. See DEV.md section 4.5.
+ */
+UENUM(BlueprintType)
+enum class EEinsteinHatCodePath : uint8
+{
+	/** Portable scalar C++. The reference implementation and the fallback. */
+	Cpp UMETA(DisplayName = "C++"),
+	/** Hand-vectorised intrinsics, 256/512-bit SIMD selected at runtime on CPU support. */
+	AssemblyCoded UMETA(DisplayName = "Assembly Coded")
+};
+
 /** A vertex of the triangular lattice the hat polykite is built on. */
 USTRUCT(BlueprintType)
 struct FEinsteinHatLatticePoint
@@ -69,6 +82,10 @@ struct FEinsteinHatConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Einstein Hat")
 	EEinsteinHatVariant Variant = EEinsteinHatVariant::Hat;
+
+	/** Geometry backend. Orthogonal to the shape settings above — see DEV.md section 4.5. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Einstein Hat|Performance")
+	EEinsteinHatCodePath CodePath = EEinsteinHatCodePath::Cpp;
 };
 
 /**

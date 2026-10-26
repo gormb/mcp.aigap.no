@@ -49,6 +49,7 @@ The deliverable is a reusable, commercially distributable tiling system that ren
 | `Content/Blueprints/` | `BPC_EinsteinHatTiler*` Blueprint containers |
 | `Content/Materials/` | `M_HatTile*` tile and Penrose rhombus materials |
 | `Scripts/` | Editor automation (level creation, asset import) |
+| `Source/EinsteinHatTiler/Private/AssemblyCoded/` | Intrinsics backend for the `Assembly Coded` code path (§4.5) — pending the SIMD sources |
 
 ---
 
@@ -81,13 +82,16 @@ Substitution rules are taken directly from the reference visualizer in [§5.1](#
 
 ### 4.3 Config surface
 
-Three configuration axes drive the whole tiling system:
+Three shape configuration axes drive the whole tiling system:
 
 | Config | Applies to | Effect |
 | --- | --- | --- |
 | Kite mid-point | `KiteShape` | Raise or lower the mid-point of the kite |
 | Hat points | `Hat` | Raise or lower all points of the hat |
 | Spectre variants | `Hat` | Enable all Spectre versions — the outliers and the middle |
+
+`FEinsteinHatConfig::CodePath` is a fourth, orthogonal setting. It selects the geometry *backend*
+rather than changing the shape — see §4.5.
 
 ### 4.4 C++ module (`Source/EinsteinHatTiler`)
 
@@ -141,8 +145,46 @@ Both actors rebuild in `OnConstruction`, so tweaking the config in the details p
 
 * **Done** — the Hat outline, the 8-kite decomposition, `KiteActor`, `HatShape`, and the mid-point / point elevation configs (§4.3, Milestone VII–VIII hooks).
 * **Reserved** — `EEinsteinHatVariant::Turtle` and `::Spectre`. Selecting either logs a warning and falls back to the Hat; the geometry lands with Milestone IX.
-* **Not started** — `MetaHat` substitution (§4.2, Milestone VI), the seeded infinite patch, and the Penrose rhombus materials.
+* **Not started** — `MetaHat` substitution (§4.2, Milestone VI), the seeded infinite patch, the Penrose rhombus materials, and the `Assembly Coded` intrinsics backend (§4.5, HP-2 to HP-6).
 
+
+### 4.5 High-performance C++ — `Assembly Coded`
+
+Geometry generation is on the hot path: every tile in a patch runs the same lattice-to-plane
+transform and the same triangle-fan expansion. That makes it a candidate for hand-written SIMD.
+
+`FEinsteinHatConfig::CodePath` selects the implementation:
+
+| `EEinsteinHatCodePath` | Meaning |
+| --- | --- |
+| `Cpp` | Portable scalar C++ — the reference implementation and the fallback |
+| `AssemblyCoded` | Hand-vectorised intrinsics, 256/512-bit SIMD selected at runtime on CPU support |
+
+`AssemblyCoded` is the "Assembly Coded" property from the roadmap. It is a **code-path selector, not
+a quality setting**: the output must be identical to `Cpp`, so both backends are validated against
+the same outline and kite tables.
+
+#### Where it applies
+
+| Stage | Vectorises | Notes |
+| --- | --- | --- |
+| Lattice → plane | Yes | 13 outline or 4×8 kite vertices, trivially data-parallel |
+| Triangle fan | Partly | Index expansion is integer work; only pays at patch scale |
+| `MetaHat` substitution | Yes at scale | Per-tile matrix work — the real win, once §4.2 lands |
+| Broad-phase culling / spatial hash | Yes | Patch-scale, not per-tile |
+| Procedural mesh upload | No | Engine-side |
+
+Not everything is worth vectorising. Per-tile SIMD over 8 kites is unlikely to beat the scalar path
+once call overhead is counted. The honest target is **patch scale** — thousands of tiles — which is
+milestone II/VI, not the single-hat MVP. Paths that do not beat scalar should be retired rather than
+kept for their own sake (HP-6).
+
+#### Hook point
+
+`UEinsteinHatLibrary::BuildHatMesh` and `BuildKiteMesh` branch on `CodePath`. `AssemblyCoded`
+currently logs once and falls back to `Cpp`. The intrinsics backend drops into
+`Source/EinsteinHatTiler/Private/AssemblyCoded/` when the sources arrive. The scalar path stays as
+the reference — it defines correctness.
 
 ---
 
@@ -192,6 +234,20 @@ The official visualizer created by one of the co-discoverers of the Hat tile.
 | XVI | Demo Level with common Unreal materials |
 | XVII | Payable Unreal Component |
 | XVIII | Paying Customer |
+
+### Performance track (`Assembly Coded`)
+
+Cross-cutting rather than sequential — these land alongside the feature milestones above, and only
+where the measurement justifies them (§4.5).
+
+| # | Item | Lands with |
+| --- | --- | --- |
+| HP-1 | `Assembly Coded` code-path property on `FEinsteinHatConfig` | done — selector only |
+| HP-2 | CPU feature detection and 256/512-bit dispatch | II |
+| HP-3 | Vectorised lattice → plane transform and kite fan | II |
+| HP-4 | Vectorised `MetaHat` substitution at patch scale | VI |
+| HP-5 | Parity test: `AssemblyCoded` output must match `Cpp` exactly | II |
+| HP-6 | Benchmark harness; retire any path that does not beat scalar | II |
 
 ---
 
