@@ -18,12 +18,15 @@ Deliveries/
 *.user
 *.userprefs
 *.sln
+*.slnx
 *.vcxproj
 *.vcxproj.filters
 
 # IDEs
 .idea/
 .vscode/compile_commands.json
+.vscode/compileCommands_*.json
+.vscode/compileCommands_*/
 *.code-workspace
 
 # Plugin binaries
