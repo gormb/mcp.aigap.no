@@ -26,6 +26,7 @@ The deliverable is a reusable, commercially distributable tiling system that ren
 | `Source/EinsteinHatTiler/` | Runtime C++ module — the tile geometry and the two tile actors |
 | `.vscode/mcp.json` | Points the editor MCP tooling at `http://127.0.0.1:8000/mcp` |
 | `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/`, `Deliveries/` | Generated directories (git-ignored, recreated on build or deploy) |
+| `.vscode/` | Build tasks, launch configs and MCP server config — see §8 |
 
 ### Source tree
 | Path | Purpose |
@@ -43,6 +44,7 @@ The deliverable is a reusable, commercially distributable tiling system that ren
    ```
    "<UE_5.8>\Engine\Build\BatchFiles\Build.bat" UeEinsteinHatEditor Win64 Development -Project="<repo>\UeEinsteinHat\UeEinsteinHat.uproject"
    ```
+   Visual Studio and VS Code are wired up too — see §8.
 
 ### Planned additions
 | Path | Purpose |
@@ -363,4 +365,69 @@ EinsteinHatTiler.F/
 
 G through R have no defined layout yet — see the package table at the top of this section for their
 folder and deploy script. Each gains a concrete layout when the delivery is specified.
+
+---
+
+## 8. Building from an IDE
+
+### Project files
+
+This engine install ships no `GenerateProjectFiles.bat`, so drive UnrealBuildTool directly:
+
+```
+dotnet "C:\p\UE_5.8\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.dll" ^
+    -ProjectFiles -Project="<repo>\UeEinsteinHat\UeEinsteinHat.uproject" -Game -Engine -VSCode
+```
+
+`-VSCode` additionally writes `.vscode/c_cpp_properties.json` and the `compileCommands_*.json`
+database for IntelliSense. Both are machine-specific and git-ignored. In VS Code this is the
+**Generate Project Files** task.
+
+Do not pass a version switch such as `-2022`: this machine has no Visual Studio 2022 C++ workload,
+only the Visual Studio 18 (Insiders) toolchain, and forcing a year makes generation fail with
+*"Visual Studio C++ 2022 installation not found"*. Let UBT auto-detect.
+
+### Visual Studio
+
+Open `UeEinsteinHat.sln` and build. The solution contains the `UeEinsteinHat` (game) and the editor
+target; choose the `Development Editor` configuration for day-to-day work.
+
+The generated `.vcxproj` files shell out to `Build.bat` using `$(SolutionDir)`, so they **must** be
+built through the solution — building a `.vcxproj` on its own resolves `$(SolutionDir)` to
+`Intermediate\ProjectFiles` and fails with *"Unable to find project file"*.
+
+Verified working: MSBuild on the generated project produced `Binaries\Win64\UeEinsteinHat.exe`.
+
+### Visual Studio Code
+
+`.vscode/tasks.json` defines these tasks:
+
+| Task | Purpose |
+| --- | --- |
+| `Build Editor (Development)` | Default build (`Ctrl+Shift+B`). Editor must be closed. |
+| `Build Game (Development)` | Same compile, safe while the editor is open. |
+| `Rebuild Editor (Development)` / `Clean Editor` | Full rebuild and clean. |
+| `Generate Project Files` | Regenerates the solution and IntelliSense data. |
+| `Launch Editor` / `Deploy Package A` | Convenience wrappers. |
+
+Recommended extensions are in `.vscode/extensions.json` (`ms-vscode.cpptools`,
+`ms-dotnettools.csharp`). The engine path is hardcoded in `tasks.json` and `launch.json`; change the
+`C:/p/UE_5.8` occurrences if the engine moves.
+
+### One caveat that catches everyone
+
+**Live Coding blocks editor target builds.** While the Unreal Editor is running with this project,
+any `UeEinsteinHatEditor` build — from Visual Studio, VS Code, or the command line — fails with
+*"Unable to build while Live Coding is active"*. Either close the editor, or build the
+`UeEinsteinHat` game target instead, which is unaffected.
+
+### Memory
+
+Long compiles on this box can hit the memory ceiling and surface a spurious `cl` internal compiler
+error (`C1001`). That is pressure, not a code fault. Re-run with reduced parallelism:
+
+```
+Build.bat UeEinsteinHat Win64 Development -Project="<repo>\UeEinsteinHat\UeEinsteinHat.uproject" -MaxParallelActions=1 -NoUBA
+```
+
 

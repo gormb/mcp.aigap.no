@@ -1,18 +1,15 @@
 {
-  // Change UE_ROOT below if the engine moves. Everything else is relative to the workspace.
+  // Engine location. Change the three C:/p/UE_5.8 occurrences if the engine moves.
   "version": "2.0.0",
   "options": {
-    "cwd": "${workspaceFolder}",
-    "env": {
-      "UE_ROOT": "C:/p/UE_5.8"
-    }
+    "cwd": "${workspaceFolder}"
   },
   "tasks": [
     {
       "label": "Build Editor (Development)",
-      "detail": "Requires the Unreal Editor to be closed; Live Coding blocks editor target builds.",
+      "detail": "Close the Unreal Editor first - Live Coding blocks editor target builds.",
       "type": "process",
-      "command": "${env:UE_ROOT}/Engine/Build/BatchFiles/Build.bat",
+      "command": "C:/p/UE_5.8/Engine/Build/BatchFiles/Build.bat",
       "args": [
         "UeEinsteinHatEditor",
         "Win64",
@@ -27,7 +24,7 @@
       "label": "Build Game (Development)",
       "detail": "Safe to run while the editor is open.",
       "type": "process",
-      "command": "${env:UE_ROOT}/Engine/Build/BatchFiles/Build.bat",
+      "command": "C:/p/UE_5.8/Engine/Build/BatchFiles/Build.bat",
       "args": [
         "UeEinsteinHat",
         "Win64",
@@ -41,7 +38,7 @@
     {
       "label": "Rebuild Editor (Development)",
       "type": "process",
-      "command": "${env:UE_ROOT}/Engine/Build/BatchFiles/Rebuild.bat",
+      "command": "C:/p/UE_5.8/Engine/Build/BatchFiles/Rebuild.bat",
       "args": [
         "UeEinsteinHatEditor",
         "Win64",
@@ -54,7 +51,7 @@
     {
       "label": "Clean Editor",
       "type": "process",
-      "command": "${env:UE_ROOT}/Engine/Build/BatchFiles/Clean.bat",
+      "command": "C:/p/UE_5.8/Engine/Build/BatchFiles/Clean.bat",
       "args": [
         "UeEinsteinHatEditor",
         "Win64",
@@ -69,7 +66,7 @@
       "type": "process",
       "command": "dotnet",
       "args": [
-        "${env:UE_ROOT}/Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.dll",
+        "C:/p/UE_5.8/Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.dll",
         "-ProjectFiles",
         "-Project=${workspaceFolder}/UeEinsteinHat.uproject",
         "-Game",
@@ -81,7 +78,7 @@
     {
       "label": "Launch Editor",
       "type": "process",
-      "command": "${env:UE_ROOT}/Engine/Binaries/Win64/UnrealEditor.exe",
+      "command": "C:/p/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe",
       "args": ["${workspaceFolder}/UeEinsteinHat.uproject"],
       "problemMatcher": []
     },
