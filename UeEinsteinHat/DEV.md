@@ -25,7 +25,7 @@ The deliverable is a reusable, commercially distributable tiling system that ren
 | `Content/` | Game assets — currently `Maps/HelloWorld` (default startup map) |
 | `Source/EinsteinHatTiler/` | Runtime C++ module — the tile geometry and the two tile actors |
 | `.vscode/mcp.json` | Points the editor MCP tooling at `http://127.0.0.1:8000/mcp` |
-| `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` | Engine-generated directories (git-ignored, recreated on build) |
+| `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/`, `Deliveries/` | Generated directories (git-ignored, recreated on build or deploy) |
 
 ### Source tree
 | Path | Purpose |
@@ -34,6 +34,7 @@ The deliverable is a reusable, commercially distributable tiling system that ren
 | `Source/EinsteinHatTiler/Public/EinsteinHatLibrary.h` + `Private/EinsteinHatLibrary.cpp` | `UEinsteinHatLibrary` — Blueprint access to the geometry and mesh triangulation |
 | `Source/EinsteinHatTiler/Public/KiteActor.h` + `Private/KiteActor.cpp` | `AKiteActor` — the smallest physical unit (one kite) |
 | `Source/EinsteinHatTiler/Public/HatShape.h` + `Private/HatShape.cpp` | `AHatShape` — the container actor (the whole hat) |
+| `Scripts/Deploy/` | `deploy.ps1` manifest table plus `deployA.cmd`–`deployR.cmd`, one packaging script per delivery (§7) |
 
 ### Getting Started
 1. Open `UeEinsteinHat.uproject` with Unreal Engine 5.8 (generates missing intermediate binaries/cache).
@@ -48,7 +49,7 @@ The deliverable is a reusable, commercially distributable tiling system that ren
 | --- | --- |
 | `Content/Blueprints/` | `BPC_EinsteinHatTiler*` Blueprint containers |
 | `Content/Materials/` | `M_HatTile*` tile and Penrose rhombus materials |
-| `Scripts/` | Editor automation (level creation, asset import) |
+| `Scripts/` | Editor automation (level creation, asset import) — the packaging scripts already live in `Scripts/Deploy/` |
 | `Source/EinsteinHatTiler/Private/AssemblyCoded/` | Intrinsics backend for the `Assembly Coded` code path (§4.5) — pending the SIMD sources |
 
 ---
@@ -253,11 +254,45 @@ where the measurement justifies them (§4.5).
 
 ## 7. Deliveries
 
-Each milestone ships a self-contained folder. Every layout below nests under `EinsteinHatTiler/`.
+Each milestone ships a self-contained package under `Deliveries/`. The source document reuses the
+bare name `EinsteinHatTiler/` for all eighteen, which makes them indistinguishable on disk, so every
+package is suffixed with its milestone letter — `EinsteinHatTiler.A/` through `EinsteinHatTiler.R/`.
+
+Each package has its own deploy script that copies that delivery's assets out of the project:
+
+| # | Delivery | Package | Deploy |
+| --- | --- | --- | --- |
+| A | MVP Hat for JavaScript — HTML single-file | `Deliveries/EinsteinHatTiler.A/` | `Scripts/Deploy/deployA.cmd` |
+| B | MVP Hat for Unreal Engine | `Deliveries/EinsteinHatTiler.B/` | `Scripts/Deploy/deployB.cmd` |
+| C | Unreal Marketplace EinsteinHat | `Deliveries/EinsteinHatTiler.C/` | `Scripts/Deploy/deployC.cmd` |
+| D | iPhone App EinsteinHat | `Deliveries/EinsteinHatTiler.D/` | `Scripts/Deploy/deployD.cmd` |
+| E | KiteShape — HTML, Unreal, C++ | `Deliveries/EinsteinHatTiler.E/` | `Scripts/Deploy/deployE.cmd` |
+| F | MetaHat — HTML, Unreal, C++ | `Deliveries/EinsteinHatTiler.F/` | `Scripts/Deploy/deployF.cmd` |
+| G | Config on Kite to raise or lower mid-point | `Deliveries/EinsteinHatTiler.G/` | `Scripts/Deploy/deployG.cmd` |
+| H | Config on Hat to raise or lower all points | `Deliveries/EinsteinHatTiler.H/` | `Scripts/Deploy/deployH.cmd` |
+| I | Config on Hat to enable all Spectre versions | `Deliveries/EinsteinHatTiler.I/` | `Scripts/Deploy/deployI.cmd` |
+| J | Meta meta Hat | `Deliveries/EinsteinHatTiler.J/` | `Scripts/Deploy/deployJ.cmd` |
+| K | Material: Penrose thin and thick rhombi | `Deliveries/EinsteinHatTiler.K/` | `Scripts/Deploy/deployK.cmd` |
+| L | Penrose rhombi working on Kite | `Deliveries/EinsteinHatTiler.L/` | `Scripts/Deploy/deployL.cmd` |
+| M | Penrose rhombi working on Hat | `Deliveries/EinsteinHatTiler.M/` | `Scripts/Deploy/deployM.cmd` |
+| N | Penrose rhombi working on MetaHat | `Deliveries/EinsteinHatTiler.N/` | `Scripts/Deploy/deployN.cmd` |
+| O | Demo Level that uses Penrose materials | `Deliveries/EinsteinHatTiler.O/` | `Scripts/Deploy/deployO.cmd` |
+| P | Demo Level with common Unreal materials | `Deliveries/EinsteinHatTiler.P/` | `Scripts/Deploy/deployP.cmd` |
+| Q | Payable Unreal Component | `Deliveries/EinsteinHatTiler.Q/` | `Scripts/Deploy/deployQ.cmd` |
+| R | Paying Customer | `Deliveries/EinsteinHatTiler.R/` | `Scripts/Deploy/deployR.cmd` |
+
+The scripts share one manifest table in `Scripts/Deploy/deploy.ps1`, which maps each project path to
+its path inside the package. A delivery whose contents are not defined yet (D and G–R) still gets a
+script; it reports the manifest as pending rather than inventing files. Any script exits non-zero
+when a listed asset is missing, so an incomplete package cannot ship by accident.
+
+`Deliveries/` is build output and is git-ignored.
+
+The layouts for A–F are fixed; G–R gain theirs when those deliveries are specified.
 
 ### A. MVP Hat for JavaScript — HTML single-file
 ```
-EinsteinHatTiler/
+EinsteinHatTiler.A/
 ├── Maps/
 │   └── ExampleMap.umap
 ├── Blueprints/
@@ -269,7 +304,7 @@ EinsteinHatTiler/
 
 ### B. MVP Hat for Unreal Engine
 ```
-EinsteinHatTiler/
+EinsteinHatTiler.B/
 ├── Blueprints/
 │   └── BPC_EinsteinHatTilerMin.uasset
 └── Maps/
@@ -282,7 +317,7 @@ C++ classes:
 
 ### C. Unreal Marketplace EinsteinHat
 ```
-EinsteinHatTiler/
+EinsteinHatTiler.C/
 ├── Blueprints/
 │   └── BPC_EinsteinHatTilerMin.uasset
 ├── Materials/
@@ -295,11 +330,12 @@ EinsteinHatTiler/
 ```
 
 ### D. iPhone App EinsteinHat
-Apple project (Xcode).
+
+Apple project (Xcode). No layout is defined yet, so `deployD.cmd` reports the manifest as pending.
 
 ### E. KiteShape — HTML, Unreal, C++
 ```
-EinsteinHatTiler/
+EinsteinHatTiler.E/
 ├── Blueprints/
 │   └── BPC_EinsteinHatTilerKite.uasset
 ├── Materials/
@@ -312,7 +348,7 @@ EinsteinHatTiler/
 
 ### F. MetaHat — HTML, Unreal, C++
 ```
-EinsteinHatTiler/
+EinsteinHatTiler.F/
 ├── Blueprints/
 │   └── BPC_EinsteinHatTiler.uasset
 ├── Materials/
@@ -324,17 +360,7 @@ EinsteinHatTiler/
 ```
 
 ### G–R. Remaining milestones
-| # | Delivery |
-| --- | --- |
-| G | Config on Kite to raise or lower mid-point |
-| H | Config on Hat to raise or lower all points |
-| I | Config on Hat to enable all Spectre versions, the outliers and the middle |
-| J | Meta meta Hat |
-| K | Material: Penrose thin and thick rhombi |
-| L | Penrose thin and thick rhombi working on Kite |
-| M | Penrose thin and thick rhombi working on Hat |
-| N | Penrose thin and thick rhombi working on MetaHat |
-| O | Demo Level that uses Penrose materials |
-| P | Demo Level with common Unreal materials |
-| Q | Payable Unreal Component |
-| R | Paying Customer |
+
+G through R have no defined layout yet — see the package table at the top of this section for their
+folder and deploy script. Each gains a concrete layout when the delivery is specified.
+

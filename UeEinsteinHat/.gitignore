@@ -5,6 +5,9 @@ DerivedDataCache/
 Intermediate/
 Saved/
 
+# Delivery packages assembled by Scripts/Deploy
+Deliveries/
+
 # Visual Studio
 .vs/
 *.opensdf
