@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Unreal Editor (UeEinsteinHatEditor)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "C:/p/UE_5.8/Engine/Binaries/Win64/UnrealEditor.exe",
+      "args": ["${workspaceFolder}/UeEinsteinHat.uproject"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Attach to Unreal Editor",
+      "type": "cppvsdbg",
+      "request": "attach",
+      "processId": "${command:pickProcess}"
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  // Change UE_ROOT below if the engine moves. Everything else is relative to the workspace.
+  "version": "2.0.0",
+  "options": {
+    "cwd": "${workspaceFolder}",
+    "env": {
+      "UE_ROOT": "C:/p/UE_5.8"
+    }
+  },
+  "tasks": [
+    {
+      "label": "Build Editor (Development)",
+      "detail": "Requires the Unreal Editor to be closed; Live Coding blocks editor target builds.",
+      "type": "process",
+      "command": "${env:UE_ROOT}/Engine/Build/BatchFiles/Build.bat",
+      "args": [
+        "UeEinsteinHatEditor",
+        "Win64",
+        "Development",
+        "-Project=${workspaceFolder}/UeEinsteinHat.uproject",
+        "-WaitMutex"
+      ],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$msvc"]
+    },
+    {
+      "label": "Build Game (Development)",
+      "detail": "Safe to run while the editor is open.",
+      "type": "process",
+      "command": "${env:UE_ROOT}/Engine/Build/BatchFiles/Build.bat",
+      "args": [
+        "UeEinsteinHat",
+        "Win64",
+        "Development",
+        "-Project=${workspaceFolder}/UeEinsteinHat.uproject",
+        "-WaitMutex"
+      ],
+      "group": "build",
+      "problemMatcher": ["$msvc"]
+    },
+    {
+      "label": "Rebuild Editor (Development)",
+      "type": "process",
+      "command": "${env:UE_ROOT}/Engine/Build/BatchFiles/Rebuild.bat",
+      "args": [
+        "UeEinsteinHatEditor",
+        "Win64",
+        "Development",
+        "-Project=${workspaceFolder}/UeEinsteinHat.uproject",
+        "-WaitMutex"
+      ],
+      "problemMatcher": ["$msvc"]
+    },
+    {
+      "label": "Clean Editor",
+      "type": "process",
+      "command": "${env:UE_ROOT}/Engine/Build/BatchFiles/Clean.bat",
+      "args": [
+        "UeEinsteinHatEditor",
+        "Win64",
+        "Development",
+        "-Project=${workspaceFolder}/UeEinsteinHat.uproject"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Generate Project Files",
+      "detail": "Regenerates the Visual Studio solution and the VS Code IntelliSense database.",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "${env:UE_ROOT}/Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.dll",
+        "-ProjectFiles",
+        "-Project=${workspaceFolder}/UeEinsteinHat.uproject",
+        "-Game",
+        "-Engine",
+        "-VSCode"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Launch Editor",
+      "type": "process",
+      "command": "${env:UE_ROOT}/Engine/Binaries/Win64/UnrealEditor.exe",
+      "args": ["${workspaceFolder}/UeEinsteinHat.uproject"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy Package A",
+      "type": "process",
+      "command": "${workspaceFolder}/Scripts/Deploy/deployA.cmd",
+      "problemMatcher": []
+    }
+  ]
+}

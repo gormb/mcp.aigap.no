@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UeEinsteinHat — Einstein Hat Tiler Development Notes</title>
+  <link rel="stylesheet" href="DEV.css">
+</head>
+<body>
+
+<header>
+  <h1>UeEinsteinHat — Einstein Hat Tiler Development Notes</h1>
+  <p class="lede"><strong>The topological aperiodic monotile</strong> — "a-periodic mono-tile".</p>
+  <p class="byline">Gorm Braarvig · Aigap.no · 2026</p>
+  <p class="meta">Unreal Engine 5.8 project framework. Copied from the <code>UeBlank</code> template (blank level, MCP tooling enabled).</p>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <a href="#overview">1. Overview</a>
+  <a href="#layout">2. Project Layout</a>
+  <a href="#goals">3. Goals</a>
+  <a href="#specifications">4. Specifications</a>
+  <a href="#references">5. Reference Implementations</a>
+  <a href="#milestones">6. Milestones</a>
+  <a href="#deliveries">7. Deliveries</a>
+</nav>
+
+<main>
+
+<section id="overview">
+  <h2>1. Overview</h2>
+  <p>Develop a tile component to be used to emulate the random nature of reality with "material" or infinite-zoom patterns — using Hat and Penrose tiles.</p>
+  <p>The deliverable is a reusable, commercially distributable tiling system that renders aperiodic monotile patterns in real time, driven by a single seed value, and exposed both as a JavaScript reference implementation and as an Unreal Engine component.</p>
+</section>
+
+<section id="layout">
+  <h2>2. Project Layout &amp; Environment</h2>
+  <table>
+    <thead>
+      <tr><th>Path</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>UeEinsteinHat.uproject</code></td><td>Project descriptor (Engine 5.8, <code>ModelContextProtocol</code> + <code>AllToolsets</code> plugins enabled)</td></tr>
+      <tr><td><code>Config/</code></td><td>Engine and project configuration (<code>DefaultEngine.ini</code>, <code>DefaultGame.ini</code>, <code>DefaultInput.ini</code>, <code>DefaultEditorPerProjectUserSettings.ini</code>)</td></tr>
+      <tr><td><code>Content/</code></td><td>Game assets — currently <code>Maps/HelloWorld</code> (default startup map)</td></tr>
+      <tr><td><code>Source/EinsteinHatTiler/</code></td><td>Runtime C++ module — the tile geometry and the two tile actors</td></tr>
+      <tr><td><code>.vscode/mcp.json</code></td><td>Points the editor MCP tooling at <code>http://127.0.0.1:8000/mcp</code></td></tr>
+      <tr><td><code>Binaries/</code>, <code>Intermediate/</code>, <code>Saved/</code>, <code>DerivedDataCache/</code></td><td>Engine-generated directories (git-ignored, recreated on build)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Source tree</h3>
+  <table>
+    <thead>
+      <tr><th>Path</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Source/EinsteinHatTiler/Public/EinsteinHatTypes.h</code></td><td>Header-only geometry "DNA": lattice points, the unit kite, the 13-vertex outline, the 8-kite decomposition, and the triangle-fan builder</td></tr>
+      <tr><td><code>Source/EinsteinHatTiler/Public/EinsteinHatLibrary.h</code> + <code>Private/EinsteinHatLibrary.cpp</code></td><td><code>UEinsteinHatLibrary</code> — Blueprint access to the geometry and mesh triangulation</td></tr>
+      <tr><td><code>Source/EinsteinHatTiler/Public/KiteActor.h</code> + <code>Private/KiteActor.cpp</code></td><td><code>AKiteActor</code> — the smallest physical unit (one kite)</td></tr>
+      <tr><td><code>Source/EinsteinHatTiler/Public/HatShape.h</code> + <code>Private/HatShape.cpp</code></td><td><code>AHatShape</code> — the container actor (the whole hat)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Getting Started</h3>
+  <ol>
+    <li>Open <code>UeEinsteinHat.uproject</code> with Unreal Engine 5.8 (generates missing intermediate binaries/cache).</li>
+    <li>The editor exposes MCP tools at <code>http://127.0.0.1:8000/mcp</code>, configured via <code>.vscode/mcp.json</code>.</li>
+    <li>The C++ module ships with the project. If you change it, close the editor and rebuild — Live Coding cannot add a module:
+      <pre><code>"&lt;UE_5.8&gt;\Engine\Build\BatchFiles\Build.bat" UeEinsteinHatEditor Win64 Development -Project="&lt;repo&gt;\UeEinsteinHat\UeEinsteinHat.uproject"</code></pre>
+    </li>
+  </ol>
+
+  <h3>Planned additions</h3>
+  <table>
+    <thead>
+      <tr><th>Path</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Content/Blueprints/</code></td><td><code>BPC_EinsteinHatTiler*</code> Blueprint containers</td></tr>
+      <tr><td><code>Content/Materials/</code></td><td><code>M_HatTile*</code> tile and Penrose rhombus materials</td></tr>
+      <tr><td><code>Scripts/</code></td><td>Editor automation (level creation, asset import)</td></tr>
+      <tr><td><code>Source/EinsteinHatTiler/Private/AssemblyCoded/</code></td><td>Intrinsics backend for the <code>Assembly Coded</code> code path (<a href="#assembly-coded">§4.5</a>) — pending the SIMD sources</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="goals">
+  <h2>3. Goals</h2>
+  <ol>
+    <li>Create infrastructure for a 3D MVP Hat working in Unreal Engine — C++ <code>KiteShape</code>, <code>Hat</code>, and <code>MetaHat</code>.</li>
+    <li>Create infrastructure for Model Development MVP Hat working in JavaScript.</li>
+    <li>Create a commercial channel: Unreal Fab <code>MvpHat</code>.</li>
+    <li>Implement a secondary channel: iPhone Marketplace <code>MvpHat</code>.</li>
+    <li>Technology mid-point: implemented Config Hat to enable all Spectre versions.</li>
+    <li>Make a minimal model for design use: Hat metalevels.</li>
+    <li>Make infinite-zoom components using an infinite-zoom Material — Penrose thin and thick rhombi.</li>
+    <li>Apply to best-practice pattern for a 3D Unreal Engine Demo Level which uses custom and common materials.</li>
+    <li>Make a commercially available product on Fab.</li>
+    <li>Get a paying customer sale on Fab.</li>
+  </ol>
+</section>
+
+<section id="specifications">
+  <h2>4. Specifications</h2>
+
+  <h3 id="hat">4.1 Hat</h3>
+  <p>The smallest physical tile unit. A non-periodic monotile that tiles the plane only aperiodically — the geometry must be exact, so vertex offsets are derived from the reference CAD sources in <a href="#geometry-3d-openscad-stl">§5.3</a>.</p>
+
+  <h3 id="metahat">4.2 MetaHat</h3>
+  <p>A cluster of Hats (metatiles H, T, P, F) that are themselves substituted recursively. MetaHat introduces the <strong>meta-level</strong> concept: each level up replaces a tile with a cluster of tiles at the next subdivision, which is what produces infinite zoom.</p>
+  <p>Substitution rules are taken directly from the reference visualizer in <a href="#gold-standard-javascriptweb">§5.1</a>.</p>
+
+  <h3>4.3 Config surface</h3>
+  <p>Three shape configuration axes drive the whole tiling system:</p>
+  <table>
+    <thead>
+      <tr><th>Config</th><th>Applies to</th><th>Effect</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Kite mid-point</td><td><code>KiteShape</code></td><td>Raise or lower the mid-point of the kite</td></tr>
+      <tr><td>Hat points</td><td><code>Hat</code></td><td>Raise or lower all points of the hat</td></tr>
+      <tr><td>Spectre variants</td><td><code>Hat</code></td><td>Enable all Spectre versions — the outliers and the middle</td></tr>
+    </tbody>
+  </table>
+  <p><code>FEinsteinHatConfig::CodePath</code> is a fourth, orthogonal setting. It selects the geometry <em>backend</em> rather than changing the shape — see <a href="#assembly-coded">§4.5</a>.</p>
+
+  <h3>4.4 C++ module (<code>Source/EinsteinHatTiler</code>)</h3>
+
+  <h4>Geometry</h4>
+  <p>The hat is a <strong>polykite</strong>: eight congruent right kites with angles 60°/90°/120°/90°, laid out on a triangular lattice. Lattice coordinates are integers; they map to the plane as</p>
+  <pre><code>LatticeToPlane(x, y) = (x + y/2, y * sqrt(3)/2)</code></pre>
+  <p>The 13-vertex outline and the 8-kite decomposition live in <code>EinsteinHatTypes.h</code> as compile-time tables. The decomposition is <strong>verified exact</strong>: the union of the eight kites has a symmetric difference of zero against the 13-vertex outline, and the areas agree at <code>8 * sqrt(3)</code>.</p>
+  <table>
+    <thead>
+      <tr><th>Table</th><th>Contents</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>GetHatOutline()</code></td><td>13 lattice vertices, counter-clockwise</td></tr>
+      <tr><td><code>GetUnitKite()</code></td><td>The canonical kite <code>(0,0), (2,-1), (2,0), (1,1)</code></td></tr>
+      <tr><td><code>GetHatKites()</code></td><td>8 kites, each ordered as 60° apex → 90° → 120° apex → 90°, counter-clockwise</td></tr>
+    </tbody>
+  </table>
+  <p>Because lattice-to-plane is affine, a kite's centre is the midpoint of its long diagonal (the 60° apex and the 120° apex), which is what <code>KiteCentrePlane</code> returns.</p>
+
+  <h4>Mesh generation</h4>
+  <p>Each kite is triangulated as a four-triangle fan around that centre point. That single choice is what makes the elevation configs work:</p>
+  <ul>
+    <li><code>FEinsteinHatConfig::KiteMidpointHeight</code> raises or lowers the fan's centre vertex (Milestone VII).</li>
+    <li><code>FEinsteinHatConfig::PointHeight</code> raises or lowers the shared kite corners, i.e. all points of the hat (Milestone VIII).</li>
+  </ul>
+  <p><code>FEinsteinHatConfig</code> also carries <code>TileScale</code> (centimetres per lattice unit, default 100 — a hat is about 5 lattice units across) and <code>Variant</code>.</p>
+
+  <h4>Classes</h4>
+  <table>
+    <thead>
+      <tr><th>Class</th><th>Role</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>AKiteActor</code></td><td>One kite on a <code>UProceduralMeshComponent</code>, centred on its own midpoint. <code>TileMaterial</code> overrides the default. <code>RebuildMesh()</code> is editor-callable.</td></tr>
+      <tr><td><code>AHatShape</code></td><td>The whole hat as a single procedural mesh. <code>GetLocalCentre()</code> returns the local bounding-box centre; <code>Seed</code> applies a deterministic yaw (the hook for the seeded patch generator in <a href="#implementation-logic-pythonmath">§5.2</a>).</td></tr>
+    </tbody>
+  </table>
+  <p>Both actors rebuild in <code>OnConstruction</code>, so tweaking the config in the details panel updates the mesh live.</p>
+
+  <h4>Blueprint API (<code>UEinsteinHatLibrary</code>)</h4>
+  <table>
+    <thead>
+      <tr><th>Function</th><th>Returns</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>GetHatOutline(TileScale)</code></td><td>13 outline vertices in centimetres</td></tr>
+      <tr><td><code>GetHatKiteCentres(TileScale)</code></td><td>8 kite centres in centimetres</td></tr>
+      <tr><td><code>GetHatKiteCount()</code></td><td><code>8</code></td></tr>
+      <tr><td><code>BuildHatMesh(Config, …)</code></td><td>Vertices, triangles, normals, planar UVs for a full hat</td></tr>
+      <tr><td><code>BuildKiteMesh(Config, …)</code></td><td>The same for the single unit kite</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Status against the milestones</h4>
+  <ul class="status-list">
+    <li><span class="cb done" role="img" aria-label="Done"></span> <strong>Done</strong> — the Hat outline, the 8-kite decomposition, <code>KiteActor</code>, <code>HatShape</code>, and the mid-point / point elevation configs (§4.3, Milestone VII–VIII hooks).</li>
+    <li><span class="cb dev" role="img" aria-label="In development"></span> <strong>In development</strong> — <code>EEinsteinHatVariant::Turtle</code> and <code>::Spectre</code> are reserved: selecting either logs a warning and falls back to the Hat; the geometry lands with Milestone IX.</li>
+    <li><span class="cb" role="img" aria-label="Not started"></span> <strong>Not started</strong> — <code>MetaHat</code> substitution (§4.2, Milestone VI), the seeded infinite patch, the Penrose rhombus materials, and the <code>Assembly Coded</code> intrinsics backend (§4.5, HP-2 to HP-6).</li>
+  </ul>
+
+  <h3 id="assembly-coded">4.5 High-performance C++ — <code>Assembly Coded</code></h3>
+  <p>Geometry generation is on the hot path: every tile in a patch runs the same lattice-to-plane transform and the same triangle-fan expansion. That makes it a candidate for hand-written SIMD.</p>
+  <p><code>FEinsteinHatConfig::CodePath</code> selects the implementation:</p>
+  <table>
+    <thead>
+      <tr><th><code>EEinsteinHatCodePath</code></th><th>Meaning</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Cpp</code></td><td>Portable scalar C++ — the reference implementation and the fallback</td></tr>
+      <tr><td><code>AssemblyCoded</code></td><td>Hand-vectorised intrinsics, 256/512-bit SIMD selected at runtime on CPU support</td></tr>
+    </tbody>
+  </table>
+  <p><code>AssemblyCoded</code> is the "Assembly Coded" property from the roadmap. It is a <strong>code-path selector, not a quality setting</strong>: the output must be identical to <code>Cpp</code>, so both backends are validated against the same outline and kite tables.</p>
+
+  <h4>Where it applies</h4>
+  <table>
+    <thead>
+      <tr><th>Stage</th><th>Vectorises</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Lattice → plane</td><td>Yes</td><td>13 outline or 4×8 kite vertices, trivially data-parallel</td></tr>
+      <tr><td>Triangle fan</td><td>Partly</td><td>Index expansion is integer work; only pays at patch scale</td></tr>
+      <tr><td><code>MetaHat</code> substitution</td><td>Yes at scale</td><td>Per-tile matrix work — the real win, once <a href="#metahat">§4.2</a> lands</td></tr>
+      <tr><td>Broad-phase culling / spatial hash</td><td>Yes</td><td>Patch-scale, not per-tile</td></tr>
+      <tr><td>Procedural mesh upload</td><td>No</td><td>Engine-side</td></tr>
+    </tbody>
+  </table>
+  <p>Not everything is worth vectorising. Per-tile SIMD over 8 kites is unlikely to beat the scalar path once call overhead is counted. The honest target is <strong>patch scale</strong> — thousands of tiles — which is milestone II/VI, not the single-hat MVP. Paths that do not beat scalar should be retired rather than kept for their own sake (HP-6).</p>
+
+  <h4>Hook point</h4>
+  <p><code>UEinsteinHatLibrary::BuildHatMesh</code> and <code>BuildKiteMesh</code> branch on <code>CodePath</code>. <code>AssemblyCoded</code> currently logs once and falls back to <code>Cpp</code>. The intrinsics backend drops into <code>Source/EinsteinHatTiler/Private/AssemblyCoded/</code> when the sources arrive. The scalar path stays as the reference — it defines correctness.</p>
+</section>
+
+<section id="references">
+  <h2>5. Kite Substitutes — Reference Implementations</h2>
+
+  <h3 id="gold-standard-javascriptweb">5.1 The "Gold Standard" (JavaScript/Web)</h3>
+  <p><strong>Project:</strong> <a href="https://github.com/isohedral/hatviz">hatviz</a> by Craig Kaplan</p>
+  <p>The official visualizer created by one of the co-discoverers of the Hat tile.</p>
+  <ul>
+    <li><strong>Why it's useful:</strong> It contains the precise substitution rules for "Metatiles" (the H, T, P, and F clusters). You can read the <code>hat.js</code> file directly to see how the meta-levels are constructed.</li>
+    <li><strong>Tech:</strong> P5.js (JavaScript). It is the perfect reference for the iPhone App's logic.</li>
+  </ul>
+
+  <h3 id="implementation-logic-pythonmath">5.2 The Implementation Logic (Python/Math)</h3>
+  <p><strong>Project:</strong> <a href="https://github.com/asmoly/Einstein_Tile_Generator">Einstein_Tile_Generator</a> by asmoly (Google Research)</p>
+  <ul>
+    <li><strong>What it is:</strong> A robust generator that uses a coordinate system based on the underlying "Kite" grid.</li>
+    <li><strong>Why it's useful:</strong> It includes <code>seed_to_pattern.py</code> logic which is vital for the Marketplace MVP. It shows how to generate a unique infinite patch from a single seed value — essential for procedural world-building in Unreal.</li>
+  </ul>
+
+  <h3 id="geometry-3d-openscad-stl">5.3 Geometry &amp; 3D (OpenSCAD/STL)</h3>
+  <p><strong>Project:</strong> <a href="https://github.com/christianp/aperiodic-monotile">aperiodic-monotile</a> by christianp</p>
+  <ul>
+    <li><strong>What it is:</strong> A collection of the tile in CAD formats (DXF, STL, OpenSCAD).</li>
+    <li><strong>Why it's useful:</strong> If you want to build the <code>KiteShape</code> in Unreal using C++, the <code>.scad</code> files provide the exact vertex offsets. It also includes the "Turtle" and "Spectre" variations.</li>
+  </ul>
+</section>
+
+<section id="milestones">
+  <h2>6. Milestones</h2>
+
+  <p class="muted">Status: <span class="cb" role="img" aria-label="Not started"></span> not started · <span class="cb dev" role="img" aria-label="In development"></span> in development · <span class="cb done" role="img" aria-label="Done"></span> done</p>
+
+  <table>
+    <thead>
+      <tr><th>#</th><th>Milestone</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>I</td><td>MVP Hat for JavaScript</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>II</td><td>MVP Hat for Unreal Engine</td><td><span class="cb dev" role="img" aria-label="In development"></span></td></tr>
+      <tr><td>III</td><td>Unreal Marketplace EinsteinHat</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>IV</td><td>iPhone App EinsteinHat</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>V</td><td><code>KiteShape</code></td><td><span class="cb done" role="img" aria-label="Done"></span></td></tr>
+      <tr><td>VI</td><td><code>MetaHat</code></td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>VII</td><td>Config on Kite to raise or lower mid-point</td><td><span class="cb done" role="img" aria-label="Done"></span></td></tr>
+      <tr><td>VIII</td><td>Config on Hat to raise or lower all points</td><td><span class="cb done" role="img" aria-label="Done"></span></td></tr>
+      <tr><td>IX</td><td>Config on Hat to enable all Spectre versions — the outliers and the middle</td><td><span class="cb dev" role="img" aria-label="In development"></span></td></tr>
+      <tr><td>X</td><td>Meta meta Hat</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>XI</td><td>Material: Penrose thin and thick rhombi</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>XII</td><td>Penrose thin and thick rhombi working on Kite</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>XIII</td><td>Penrose thin and thick rhombi working on Hat</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>XIV</td><td>Penrose thin and thick rhombi working on MetaHat</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>XV</td><td>Demo Level that uses Penrose materials</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>XVI</td><td>Demo Level with common Unreal materials</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>XVII</td><td>Payable Unreal Component</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>XVIII</td><td>Paying Customer</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Performance track (<code>Assembly Coded</code>)</h3>
+  <p>Cross-cutting rather than sequential — these land alongside the feature milestones above, and only where the measurement justifies them (<a href="#assembly-coded">§4.5</a>).</p>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Item</th><th>Lands with</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>HP-1</td><td><code>Assembly Coded</code> code-path property on <code>FEinsteinHatConfig</code></td><td>done — selector only</td><td><span class="cb done" role="img" aria-label="Done"></span></td></tr>
+      <tr><td>HP-2</td><td>CPU feature detection and 256/512-bit dispatch</td><td>II</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>HP-3</td><td>Vectorised lattice → plane transform and kite fan</td><td>II</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>HP-4</td><td>Vectorised <code>MetaHat</code> substitution at patch scale</td><td>VI</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>HP-5</td><td>Parity test: <code>AssemblyCoded</code> output must match <code>Cpp</code> exactly</td><td>II</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+      <tr><td>HP-6</td><td>Benchmark harness; retire any path that does not beat scalar</td><td>II</td><td><span class="cb" role="img" aria-label="Not started"></span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="deliveries">
+  <h2>7. Deliveries</h2>
+  <p>Each milestone ships a self-contained package under <code>Deliveries/</code>. The source document reuses the bare name <code>EinsteinHatTiler/</code> for all eighteen, which makes them indistinguishable on disk, so every package is suffixed with its milestone letter — <code>EinsteinHatTiler.A/</code> through <code>EinsteinHatTiler.R/</code>.</p>
+  <p>Each package has its own deploy script that copies that delivery's assets out of the project:</p>
+
+  <table>
+    <thead>
+      <tr><th>#</th><th>Delivery</th><th>Package</th><th>Deploy</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>A</td><td>MVP Hat for JavaScript — HTML single-file</td><td><code>Deliveries/EinsteinHatTiler.A/</code></td><td><code>Scripts/Deploy/deployA.cmd</code></td></tr>
+      <tr><td>B</td><td>MVP Hat for Unreal Engine</td><td><code>Deliveries/EinsteinHatTiler.B/</code></td><td><code>Scripts/Deploy/deployB.cmd</code></td></tr>
+      <tr><td>C</td><td>Unreal Marketplace EinsteinHat</td><td><code>Deliveries/EinsteinHatTiler.C/</code></td><td><code>Scripts/Deploy/deployC.cmd</code></td></tr>
+      <tr><td>D</td><td>iPhone App EinsteinHat</td><td><code>Deliveries/EinsteinHatTiler.D/</code></td><td><code>Scripts/Deploy/deployD.cmd</code></td></tr>
+      <tr><td>E</td><td>KiteShape — HTML, Unreal, C++</td><td><code>Deliveries/EinsteinHatTiler.E/</code></td><td><code>Scripts/Deploy/deployE.cmd</code></td></tr>
+      <tr><td>F</td><td>MetaHat — HTML, Unreal, C++</td><td><code>Deliveries/EinsteinHatTiler.F/</code></td><td><code>Scripts/Deploy/deployF.cmd</code></td></tr>
+      <tr><td>G</td><td>Config on Kite to raise or lower mid-point</td><td><code>Deliveries/EinsteinHatTiler.G/</code></td><td><code>Scripts/Deploy/deployG.cmd</code></td></tr>
+      <tr><td>H</td><td>Config on Hat to raise or lower all points</td><td><code>Deliveries/EinsteinHatTiler.H/</code></td><td><code>Scripts/Deploy/deployH.cmd</code></td></tr>
+      <tr><td>I</td><td>Config on Hat to enable all Spectre versions</td><td><code>Deliveries/EinsteinHatTiler.I/</code></td><td><code>Scripts/Deploy/deployI.cmd</code></td></tr>
+      <tr><td>J</td><td>Meta meta Hat</td><td><code>Deliveries/EinsteinHatTiler.J/</code></td><td><code>Scripts/Deploy/deployJ.cmd</code></td></tr>
+      <tr><td>K</td><td>Material: Penrose thin and thick rhombi</td><td><code>Deliveries/EinsteinHatTiler.K/</code></td><td><code>Scripts/Deploy/deployK.cmd</code></td></tr>
+      <tr><td>L</td><td>Penrose rhombi working on Kite</td><td><code>Deliveries/EinsteinHatTiler.L/</code></td><td><code>Scripts/Deploy/deployL.cmd</code></td></tr>
+      <tr><td>M</td><td>Penrose rhombi working on Hat</td><td><code>Deliveries/EinsteinHatTiler.M/</code></td><td><code>Scripts/Deploy/deployM.cmd</code></td></tr>
+      <tr><td>N</td><td>Penrose rhombi working on MetaHat</td><td><code>Deliveries/EinsteinHatTiler.N/</code></td><td><code>Scripts/Deploy/deployN.cmd</code></td></tr>
+      <tr><td>O</td><td>Demo Level that uses Penrose materials</td><td><code>Deliveries/EinsteinHatTiler.O/</code></td><td><code>Scripts/Deploy/deployO.cmd</code></td></tr>
+      <tr><td>P</td><td>Demo Level with common Unreal materials</td><td><code>Deliveries/EinsteinHatTiler.P/</code></td><td><code>Scripts/Deploy/deployP.cmd</code></td></tr>
+      <tr><td>Q</td><td>Payable Unreal Component</td><td><code>Deliveries/EinsteinHatTiler.Q/</code></td><td><code>Scripts/Deploy/deployQ.cmd</code></td></tr>
+      <tr><td>R</td><td>Paying Customer</td><td><code>Deliveries/EinsteinHatTiler.R/</code></td><td><code>Scripts/Deploy/deployR.cmd</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>The scripts share one manifest table in <code>Scripts/Deploy/deploy.ps1</code>, which maps each project path to its path inside the package. A delivery whose contents are not defined yet (D and G–R) still gets a script; it reports the manifest as pending rather than inventing files. Any script exits non-zero when a listed asset is missing, so an incomplete package cannot ship by accident.</p>
+  <p><code>Deliveries/</code> is build output and is git-ignored.</p>
+  <p>The layouts for A–F are fixed; G–R gain theirs when those deliveries are specified.</p>
+
+  <h3>A. MVP Hat for JavaScript — HTML single-file</h3>
+  <pre><code>EinsteinHatTiler.A/
+├── Maps/
+│   └── ExampleMap.umap
+├── Blueprints/
+│   ├── BP_EinsteinHatTilerMvp.uasset
+│   └── WBP_EinsteinHatTilerMvp.uasset
+└── Documentation/
+    └── EinsteinHatTilerMvp.html</code></pre>
+
+  <h3>B. MVP Hat for Unreal Engine</h3>
+  <pre><code>EinsteinHatTiler.B/
+├── Blueprints/
+│   └── BPC_EinsteinHatTilerMin.uasset
+└── Maps/
+    └── ExampleMap.umap</code></pre>
+  <p>C++ classes:</p>
+  <ul>
+    <li><code>EinsteinHatTypes.h</code> — a header-only file defining the "DNA" of the shape.</li>
+    <li><code>KiteActor.h</code> / <code>.cpp</code> — the smallest physical unit.</li>
+    <li><code>HatShape.h</code> / <code>.cpp</code> — the container actor.</li>
+  </ul>
+
+  <h3>C. Unreal Marketplace EinsteinHat</h3>
+  <pre><code>EinsteinHatTiler.C/
+├── Blueprints/
+│   └── BPC_EinsteinHatTilerMin.uasset
+├── Materials/
+│   └── M_HatTileMin.uasset
+├── Maps/
+│   └── ExampleMap.umap
+└── Documentation/
+    ├── README.pdf
+    └── Icon128.png</code></pre>
+
+  <h3>D. iPhone App EinsteinHat</h3>
+  <p>Apple project (Xcode). No layout is defined yet, so <code>deployD.cmd</code> reports the manifest as pending.</p>
+
+  <h3>E. KiteShape — HTML, Unreal, C++</h3>
+  <pre><code>EinsteinHatTiler.E/
+├── Blueprints/
+│   └── BPC_EinsteinHatTilerKite.uasset
+├── Materials/
+│   └── M_HatTileKite.uasset
+├── Maps/
+│   └── ExampleMap.umap
+└── Documentation/
+    └── README.pdf</code></pre>
+
+  <h3>F. MetaHat — HTML, Unreal, C++</h3>
+  <pre><code>EinsteinHatTiler.F/
+├── Blueprints/
+│   └── BPC_EinsteinHatTiler.uasset
+├── Materials/
+│   └── M_HatTileMeta.uasset
+├── Maps/
+│   └── ExampleMap.umap
+└── Documentation/
+    └── README.pdf</code></pre>
+
+  <h3>G–R. Remaining milestones</h3>
+  <p>G through R have no defined layout yet — see the package table at the top of this section for their folder and deploy script. Each gains a concrete layout when the delivery is specified.</p>
+</section>
+
+</main>
+
+</body>
+</html>

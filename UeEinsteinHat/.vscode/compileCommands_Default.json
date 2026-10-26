@@ -1,0 +1,34 @@
+[
+	{
+		"file": "C:\\doc\\mcp.aigap.no\\UeEinsteinHat\\Source\\EinsteinHatTiler\\EinsteinHatTiler.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\doc\\mcp.aigap.no\\UeEinsteinHat\\.vscode\\compileCommands_Default\\EinsteinHatTiler.0.rsp"
+		],
+		"directory": "C:\\p\\UE_5.8\\Engine\\Source"
+	},
+	{
+		"file": "C:\\doc\\mcp.aigap.no\\UeEinsteinHat\\Source\\EinsteinHatTiler\\Private\\EinsteinHatLibrary.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\doc\\mcp.aigap.no\\UeEinsteinHat\\.vscode\\compileCommands_Default\\EinsteinHatTiler.0.rsp"
+		],
+		"directory": "C:\\p\\UE_5.8\\Engine\\Source"
+	},
+	{
+		"file": "C:\\doc\\mcp.aigap.no\\UeEinsteinHat\\Source\\EinsteinHatTiler\\Private\\HatShape.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\doc\\mcp.aigap.no\\UeEinsteinHat\\.vscode\\compileCommands_Default\\EinsteinHatTiler.0.rsp"
+		],
+		"directory": "C:\\p\\UE_5.8\\Engine\\Source"
+	},
+	{
+		"file": "C:\\doc\\mcp.aigap.no\\UeEinsteinHat\\Source\\EinsteinHatTiler\\Private\\KiteActor.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\doc\\mcp.aigap.no\\UeEinsteinHat\\.vscode\\compileCommands_Default\\EinsteinHatTiler.0.rsp"
+		],
+		"directory": "C:\\p\\UE_5.8\\Engine\\Source"
+	}
+]
