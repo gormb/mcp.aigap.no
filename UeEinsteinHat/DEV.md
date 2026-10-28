@@ -444,6 +444,36 @@ any `UeEinsteinHatEditor` build — from Visual Studio, VS Code, or the command 
 *"Unable to build while Live Coding is active"*. Either close the editor, or build the
 `UeEinsteinHat` game target instead, which is unaffected.
 
+### Exit code 8 is a rules error, not your code
+
+`Build.bat ... exited with code 8` from Visual Studio means UnrealBuildTool failed to load a module
+rules assembly. The line that matters is above the MSBuild noise:
+
+```
+Expecting to find a type to be declared in a module rules named 'VisualStudioTools'
+in 'UE5Rules, ...'.  This type must derive from the 'ModuleRules' type
+Result: Failed (RulesError)
+```
+
+Cause: a plugin was enabled in the `.uproject` *after* the engine's precompiled rules assembly was
+generated. `Engine/Intermediate/Build/BuildRules/UE5Rules.dll` is stale and does not contain that
+plugin's `ModuleRules` type, so enabling it fails at plugin setup.
+
+Deleting that DLL does **not** help. This is an installed-build engine
+(`Engine/Build/InstalledBuild.txt` exists), so UBT expects a precompiled assembly and will not
+rebuild it — you then get *"Precompiled rules assembly ... does not exist"* instead. The rules must
+be regenerated in source-build mode:
+
+1. Copy `Engine\Build\InstalledBuild.txt` aside and delete the original.
+2. Run `Scripts\GenerateProjectFiles.cmd` — it prints `Compiling Rules Assemblies` and rewrites
+   `UE5Rules.dll` plus its manifest.
+3. Restore `InstalledBuild.txt`.
+4. Rebuild.
+
+This was hit when enabling `VisualStudioTools` (Visual Studio Integration Tools) for VS 2026: the
+plugin was installed at 19:04, the loaded rules assembly dated from the previous day. Both
+`UeEinsteinHat` and `UeEinsteinHatEditor` build once the rules are fresh.
+
 ### Memory
 
 Long compiles on this box can hit the memory ceiling and surface a spurious `cl` internal compiler
