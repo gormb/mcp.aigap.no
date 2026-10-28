@@ -28,3 +28,6 @@ pnpm-debug.log*
 Thumbs.db
 .idea/
 *.swp
+
+# Local clone of Visual Studio Tools for Unreal Engine (third-party, not vendored)
+vc-ue-extensions/
