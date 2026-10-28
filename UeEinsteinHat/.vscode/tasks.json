@@ -7,7 +7,7 @@
   "tasks": [
     {
       "label": "Build Editor (Development)",
-      "detail": "Close the Unreal Editor first - Live Coding blocks editor target builds.",
+      "detail": "Primary IDE is Visual Studio 2026 Insiders. Close the editor first - Live Coding blocks editor target builds.",
       "type": "process",
       "command": "C:/p/UE_5.8/Engine/Build/BatchFiles/Build.bat",
       "args": [
@@ -62,17 +62,9 @@
     },
     {
       "label": "Generate Project Files",
-      "detail": "Regenerates the Visual Studio solution and the VS Code IntelliSense database.",
+      "detail": "Regenerates the Visual Studio 2026 solution and the VS Code IntelliSense database.",
       "type": "process",
-      "command": "dotnet",
-      "args": [
-        "C:/p/UE_5.8/Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.dll",
-        "-ProjectFiles",
-        "-Project=${workspaceFolder}/UeEinsteinHat.uproject",
-        "-Game",
-        "-Engine",
-        "-VSCode"
-      ],
+      "command": "${workspaceFolder}/Scripts/GenerateProjectFiles.cmd",
       "problemMatcher": []
     },
     {

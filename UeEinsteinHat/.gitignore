@@ -10,6 +10,7 @@ Deliveries/
 
 # Visual Studio
 .vs/
+.vs-support/
 *.opensdf
 *.sdf
 *.VC.db

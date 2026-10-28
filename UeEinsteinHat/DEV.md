@@ -27,6 +27,7 @@ The deliverable is a reusable, commercially distributable tiling system that ren
 | `.vscode/mcp.json` | Points the editor MCP tooling at `http://127.0.0.1:8000/mcp` |
 | `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/`, `Deliveries/` | Generated directories (git-ignored, recreated on build or deploy) |
 | `.vscode/` | Build tasks, launch configs and MCP server config — see §8 |
+| `Scripts/GenerateProjectFiles.cmd` | Regenerates the Visual Studio 2026 solution and IntelliSense data (§8) |
 
 ### Source tree
 | Path | Purpose |
@@ -370,33 +371,55 @@ folder and deploy script. Each gains a concrete layout when the delivery is spec
 
 ## 8. Building from an IDE
 
+**Primary IDE: Visual Studio 2026 Insiders** (version 18). The C++ toolchain on this machine is
+`C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.50.35717`.
+
 ### Project files
 
-This engine install ships no `GenerateProjectFiles.bat`, so drive UnrealBuildTool directly:
+This engine install ships no `GenerateProjectFiles.bat`, so drive UnrealBuildTool directly. Use the
+script, which pins the format explicitly:
+
+```
+Scripts\GenerateProjectFiles.cmd
+```
+
+which runs:
 
 ```
 dotnet "C:\p\UE_5.8\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.dll" ^
-    -ProjectFiles -Project="<repo>\UeEinsteinHat\UeEinsteinHat.uproject" -Game -Engine -VSCode
+    -ProjectFiles -Project="<repo>\UeEinsteinHat\UeEinsteinHat.uproject" ^
+    -ProjectFileFormat=VisualStudio2026 -ProjectFileFormat=VisualStudioCode -Game -Engine
 ```
 
-`-VSCode` additionally writes `.vscode/c_cpp_properties.json` and the `compileCommands_*.json`
-database for IntelliSense. Both are machine-specific and git-ignored. In VS Code this is the
-**Generate Project Files** task.
+`VisualStudioCode` additionally writes `.vscode/c_cpp_properties.json` and the
+`compileCommands_*.json` database for IntelliSense. Both are machine-specific and git-ignored.
 
-Do not pass a version switch such as `-2022`: this machine has no Visual Studio 2022 C++ workload,
-only the Visual Studio 18 (Insiders) toolchain, and forcing a year makes generation fail with
-*"Visual Studio C++ 2022 installation not found"*. Let UBT auto-detect.
+**Visual Studio 18 *is* Visual Studio 2026.** Do not pass `-2022`; it fails with *"Visual Studio C++
+2022 installation not found"*. `-ProjectFileFormat=VisualStudio2026` is the correct switch, and it
+generates a solution stamped `# Visual Studio Version 18`. Format auto-detection resolves to the
+same thing, since VS 2026 is the only Visual Studio installed — so editor-driven generation is
+already correct and no `BuildConfiguration.xml` edit is required.
+
+`*.sln`, `*.slnx` and the `.vcxproj` files are git-ignored: they are generated, and they embed
+absolute paths. Regenerate after pulling or after changing `Source/`.
 
 ### Visual Studio
 
-Open `UeEinsteinHat.sln` and build. The solution contains the `UeEinsteinHat` (game) and the editor
-target; choose the `Development Editor` configuration for day-to-day work.
+Open `UeEinsteinHat.sln`. It contains the `UeEinsteinHat` (game) and editor targets; use the
+`Development Editor` configuration for day-to-day work.
 
 The generated `.vcxproj` files shell out to `Build.bat` using `$(SolutionDir)`, so they **must** be
 built through the solution — building a `.vcxproj` on its own resolves `$(SolutionDir)` to
 `Intermediate\ProjectFiles` and fails with *"Unable to find project file"*.
 
 Verified working: MSBuild on the generated project produced `Binaries\Win64\UeEinsteinHat.exe`.
+
+Note for scripting: `msbuild UeEinsteinHat.sln -t:UeEinsteinHat` does **not** work on MSBuild 18 — its
+new solution parser forwards the target to every project, including the engine `.csproj` files, and
+fails with a wall of `MSB4057`. Build from the IDE, or invoke the `.vcxproj` with
+`/p:SolutionDir=<project folder>\` as VS does.
+
+`.vs-support/` is a local Visual Studio scratch folder and is git-ignored.
 
 ### Visual Studio Code
 
@@ -407,7 +430,7 @@ Verified working: MSBuild on the generated project produced `Binaries\Win64\UeEi
 | `Build Editor (Development)` | Default build (`Ctrl+Shift+B`). Editor must be closed. |
 | `Build Game (Development)` | Same compile, safe while the editor is open. |
 | `Rebuild Editor (Development)` / `Clean Editor` | Full rebuild and clean. |
-| `Generate Project Files` | Regenerates the solution and IntelliSense data. |
+| `Generate Project Files` | Runs `Scripts/GenerateProjectFiles.cmd`. |
 | `Launch Editor` / `Deploy Package A` | Convenience wrappers. |
 
 Recommended extensions are in `.vscode/extensions.json` (`ms-vscode.cpptools`,
